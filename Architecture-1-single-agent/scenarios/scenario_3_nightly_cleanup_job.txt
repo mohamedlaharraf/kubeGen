@@ -1,0 +1,3 @@
+Déploie une tâche de nettoyage de logs (image acme/log-cleaner:latest) qui doit
+s'exécuter automatiquement tous les jours à 2h du matin, et se terminer d'elle-même.
+Elle ne consomme pas beaucoup de ressources.

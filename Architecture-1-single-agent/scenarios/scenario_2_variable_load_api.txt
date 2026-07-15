@@ -1,0 +1,5 @@
+Déploie une API backend (image acme/orders-api:2.0.0) qui doit gérer une charge très
+variable selon l'heure de la journée (pic entre 9h et 18h). Elle expose le port 8080
+et doit être accessible depuis l'extérieur du cluster via un nom de domaine
+orders.acme-internal.io. Elle a besoin d'une variable d'environnement DB_HOST
+pointant vers une base PostgreSQL externe.
