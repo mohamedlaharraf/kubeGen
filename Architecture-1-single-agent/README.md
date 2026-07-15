@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # EcoKubeGen — Architecture 1 : Agent unique monolithique
 
 Première des 4 architectures à comparer dans le cadre du projet
@@ -210,7 +209,4 @@ Cette architecture sert de référence pour répondre aux objectifs de recherche
   (à évaluer manuellement ou via un script d'analyse à écrire plus tard)
 - **Coût d'inférence** : `num_llm_calls` (toujours 1 ici) et `latency_seconds`,
   à comparer aux architectures multi-agents qui feront plusieurs appels LLM
-=======
-# kubeGen
-TBD
->>>>>>> 6a19c5f9b72e3e254c4036326da5e9320d6e5aad
+
