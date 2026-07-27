@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemma-4-31b-it",
+  "temperature": 0.2,
+  "requirement": "Déploie une API de paiement Node.js appelée \"checkout-api\", image\nmyregistry/checkout:1.4.2, namespace \"payments\". Elle doit tourner en 3\nréplicas, exposer le port 8080 en HTTP. Elle a besoin d'une variable\nd'environnement NODE_ENV=production et d'un mot de passe base de données\nDB_PASSWORD à lire depuis le secret \"checkout-db-secret\". Le trafic est\ntrès faible la nuit (entre minuit et 6h) et très élevé entre 9h et midi :\nje veux que ça scale automatiquement pour économiser de l'énergie/coût\naux heures creuses, avec un minimum de 2 réplicas et un maximum de 8.\nPas de stockage persistant nécessaire. La sécurité est primordiale.",
+  "latency_seconds": 24.29,
+  "output_chars": 2928,
+  "prompt_tokens": 792,
+  "output_tokens": 813,
+  "total_tokens": 1605,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-27T14:50:24.380936"
+}

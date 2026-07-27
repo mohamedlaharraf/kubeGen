@@ -125,6 +125,11 @@ class SingleAgentGenerator:
         manifest_path.write_text(yaml_text, encoding="utf-8")
         (run_dir / "raw_llm_output.txt").write_text(raw_output, encoding="utf-8")
 
+        usage = getattr(response, "usage_metadata", None)
+        prompt_tokens = getattr(usage, "prompt_token_count", None) if usage else None
+        output_tokens = getattr(usage, "candidates_token_count", None) if usage else None
+        total_tokens = getattr(usage, "total_token_count", None) if usage else None
+
         metadata = {
             "architecture": "1_single_agent_monolithic",
             "model": self.model,
@@ -132,6 +137,9 @@ class SingleAgentGenerator:
             "requirement": requirement,
             "latency_seconds": round(elapsed, 2),
             "output_chars": len(raw_output),
+            "prompt_tokens": prompt_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
             "num_llm_calls": 1,
             "yaml_valid": is_valid,
             "validation_errors": errors,

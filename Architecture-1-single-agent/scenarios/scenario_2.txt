@@ -1,0 +1,8 @@
+Déploie une API d'analytics appelée "analytics-api", image
+myregistry/analytics:2.0, namespace "data", port 8080. Elle doit se
+connecter à une base de données gérée par l'opérateur CrunchyData
+PostgreSQL (PostgresCluster avec 3 instances et réplication synchrone).
+L'application doit aussi être conforme à la norme PCI-DSS niveau 1
+(chiffrement au repos obligatoire pour tous les volumes, rotation des
+clés tous les 90 jours). Utilise aussi Dapr comme sidecar pour la
+communication pub/sub avec les autres services de l'entreprise.

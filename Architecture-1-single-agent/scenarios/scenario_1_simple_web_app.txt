@@ -1,3 +1,0 @@
-Déploie une application web Node.js (image node-web-app:1.4.2) avec 3 replicas.
-Elle écoute sur le port 3000 et doit être accessible uniquement à l'intérieur du cluster
-(pas d'exposition externe). La charge est stable dans le temps.

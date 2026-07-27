@@ -1,0 +1,3 @@
+architecture,scenario,model,latency_seconds,num_llm_calls,yaml_valid,output_chars,prompt_tokens,output_tokens,total_tokens,timestamp,run_dir
+1_single_agent_monolithic,,gemma-4-31b-it,24.29,1,True,2928,792,813,1605,2026-07-27T14:50:24.380936,generated-k8s-templates\scenario_1
+1_single_agent_monolithic,,gemma-4-31b-it,31.51,1,True,3980,752,1110,1862,2026-07-27T14:50:55.948241,generated-k8s-templates\scenario_2

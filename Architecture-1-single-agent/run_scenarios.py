@@ -22,7 +22,7 @@ RESULTS_CSV = RESULTS_DIR / "single_agent_results.csv"
 
 CSV_FIELDS = [
     "architecture", "scenario", "model", "latency_seconds",
-    "num_llm_calls", "yaml_valid", "output_chars", "timestamp", "run_dir",
+    "num_llm_calls", "yaml_valid", "output_chars", "prompt_tokens", "output_tokens", "total_tokens", "timestamp", "run_dir",
 ]
 
 
