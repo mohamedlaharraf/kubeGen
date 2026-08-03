@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: media
+  labels:
+    app.kubernetes.io/name: image-resizer
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: media-processing
+data:
+  # Valeur par défaut fournie pour assurer la validité du manifest, à adapter selon l'environnement
+  host: "rabbitmq.media.svc.cluster.local"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-resizer
+  namespace: media
+  labels:
+    app.kubernetes.io/name: image-resizer
+    app.kubernetes.io/version: "3.2"
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: media-processing
+spec:
+  # # Énergie: Replicas initial mis à 0, la gestion de l'échelle est entièrement déléguée à KEDA
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: image-resizer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: image-resizer
+        app.kubernetes.io/version: "3.2"
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/part-of: media-processing
+    spec:
+      # Sécurité: Restriction du contexte de sécurité au niveau Pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: myregistry/resizer:3.2
+          imagePullPolicy: IfNotPresent
+          # Sécurité: Restriction des privilèges du conteneur
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: host
+            - name: QUEUE_NAME
+              value: "resize-queue"
+          # # Énergie & Dimensionnement: Requests ajustés au plus bas pour le traitement d'images afin d'éviter la sur-allocation
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # Remarque: Pas de liveness/readiness probes HTTP car aucun port n'est exposé. 
+          # Utilisation d'un système de fichiers temporaire en mémoire pour les traitements d'images éphémères tout en maintenant readOnlyRootFilesystem
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: image-resizer-scaler
+  namespace: media
+  labels:
+    app.kubernetes.io/name: image-resizer
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: media-processing
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: image-resizer
+  # # Énergie: minReplicaCount à 0 garantit une consommation d'énergie nulle (0 pod) quand la file est vide
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  cooldownPeriod: 300
+  pollingInterval: 15
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: resize-queue
+        # Nombre de messages par pod cible avant de scaler
+        mode: QueueLength
+        value: "20"
+      authenticationRef:
+        name: keda-rabbitmq-auth
+---
+# Objet de référence pour l'authentification KEDA (à configurer avec les secrets réels de l'hôte RabbitMQ)
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-rabbitmq-auth
+  namespace: media
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: rabbitmq-secret
+      key: host
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-secret
+  namespace: media
+type: Opaque
+stringData:
+  # Valeur par défaut indicative pour la chaîne de connexion AMQP requise par KEDA
+  host: "amqp://guest:guest@rabbitmq.media.svc.cluster.local:5672/"

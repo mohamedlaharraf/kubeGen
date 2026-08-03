@@ -1,0 +1,6 @@
+Crée une tâche planifiée "log-cleanup" (image myregistry/cleanup-tool:1.0,
+namespace "ops") qui s'exécute tous les jours à 3h du matin pour purger
+les logs de plus de 30 jours sur un volume partagé "shared-logs" (PVC
+existant, montage en lecture-écriture). Pas besoin de port réseau. La
+tâche doit s'arrêter automatiquement si elle dépasse 15 minutes
+d'exécution, et ne pas relancer plus de 2 tentatives en cas d'échec.

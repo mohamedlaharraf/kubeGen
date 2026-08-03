@@ -1,0 +1,126 @@
+{
+  "architecture_type": "single",
+  "namespace": "payments",
+  "components": [
+    {
+      "component_name": "checkout-api",
+      "workload_type": "Deployment",
+      "image": "myregistry/checkout:1.4.2",
+      "replicas": 3,
+      "labels": {
+        "app": "checkout-api"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [
+        {
+          "name": "NODE_ENV",
+          "value": "production",
+          "from_secret": null,
+          "from_configmap": null,
+          "secret_key": null,
+          "configmap_key": null
+        },
+        {
+          "name": "DB_PASSWORD",
+          "value": null,
+          "from_secret": "checkout-db-secret",
+          "from_configmap": null,
+          "secret_key": "DB_PASSWORD",
+          "configmap_key": null
+        }
+      ],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [
+        "Autoscaling automatique pour économiser énergie/coût aux heures creuses",
+        "Réduction de la capacité nocturne quand le trafic est très faible"
+      ],
+      "resource_hints": "Autoscaling demandé: minReplicas=2, maxReplicas=8",
+      "traffic_windows": [
+        {
+          "start_time": "00:00",
+          "end_time": "06:00",
+          "level": "low",
+          "timezone": null,
+          "target_replicas_hint": 2
+        },
+        {
+          "start_time": "09:00",
+          "end_time": "12:00",
+          "level": "high",
+          "timezone": null,
+          "target_replicas_hint": 8
+        }
+      ],
+      "constraints": [],
+      "security_requirements": [
+        "Exigence de sécurité globale maximale (sécurité primordiale)"
+      ],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "raw_user_request": "Déploie une API de paiement Node.js appelée \"checkout-api\", image\nmyregistry/checkout:1.4.2, namespace \"payments\". Elle doit tourner en 3\nréplicas, exposer le port 8080 en HTTP. Elle a besoin d'une variable\nd'environnement NODE_ENV=production et d'un mot de passe base de données\nDB_PASSWORD à lire depuis le secret \"checkout-db-secret\". Le trafic est\ntrès faible la nuit (entre minuit et 6h) et très élevé entre 9h et midi :\nje veux que ça scale automatiquement pour économiser de l'énergie/coût\naux heures creuses, avec un minimum de 2 réplicas et un maximum de 8.\nPas de stockage persistant nécessaire. La sécurité est primordiale.",
+  "ambiguities": [
+    {
+      "field": "components[0].env_vars[1].secret_key",
+      "question": "Quelle est la clé exacte à lire dans le secret checkout-db-secret ?",
+      "assumption_made": "Utilisation de DB_PASSWORD comme clé interne du Secret",
+      "confidence": "medium"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déploiement API de paiement checkout-api (Node.js)",
+      "Image conteneur myregistry/checkout:1.4.2",
+      "Namespace payments",
+      "3 réplicas de base",
+      "Exposition port 8080 HTTP",
+      "Variable env NODE_ENV=production",
+      "Secret DB_PASSWORD depuis checkout-db-secret",
+      "Fenêtre de trafic faible 00:00 - 06:00",
+      "Fenêtre de trafic fort 09:00 - 12:00",
+      "Autoscaling énergie/coût entre 2 et 8 réplicas",
+      "Aucun stockage persistant requis",
+      "Sécurité primordiale"
+    ],
+    "requirements_mapped": [
+      "Déploiement API de paiement checkout-api (Node.js)",
+      "Image conteneur myregistry/checkout:1.4.2",
+      "Namespace payments",
+      "3 réplicas de base",
+      "Exposition port 8080 HTTP",
+      "Variable env NODE_ENV=production",
+      "Secret DB_PASSWORD depuis checkout-db-secret",
+      "Fenêtre de trafic faible 00:00 - 06:00",
+      "Fenêtre de trafic fort 09:00 - 12:00",
+      "Autoscaling énergie/coût entre 2 et 8 réplicas",
+      "Aucun stockage persistant requis",
+      "Sécurité primordiale"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 0,
+    "self_check_passed": true
+  }
+}

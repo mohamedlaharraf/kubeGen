@@ -1,0 +1,183 @@
+# Vault Secret Policy / Agent Injection Setup
+# Hypothèse : Vault Agent Injector est installé dans le cluster.
+# L'annotation de pod permet de lire le secret Vault sans exécuter un conteneur d'init lourd personnalisé.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search
+  labels:
+    app.kubernetes.io/name: search-system
+    app.kubernetes.io/part-of: search-platform
+---
+# Cluster Elasticsearch via l'opérateur ECK (Elastic Cloud on Kubernetes)
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: search
+  labels:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: search-platform
+spec:
+  version: 8.11.0
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+    podTemplate:
+      spec:
+        # Sécurité : Exécution sous un utilisateur non-root
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          fsGroup: 1000
+        containers:
+        - name: elasticsearch
+          resources:
+            # Énergie : Allocation mémoire/CPU ajustée pour éviter la sur-allocation tout en garantissant la stabilité d'ES
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+---
+# Deployment de l'API de recherche "search-api"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app.kubernetes.io/name: search-api
+    app.kubernetes.io/version: "1.0"
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: search-platform
+spec:
+  replicas: 2 # Respect de l'exigence de haute disponibilité minimale (2 réplicas)
+  selector:
+    matchLabels:
+      app: search-api
+  template:
+    metadata:
+      labels:
+        app: search-api
+        app.kubernetes.io/name: search-api
+        app.kubernetes.io/version: "1.0"
+      annotations:
+        # Intégration Vault Agent Injector pour récupérer les identifiants en toute sécurité
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "search-api-role"
+        vault.hashicorp.com/agent-inject-secret-es-creds: "secret/data/search-api/elasticsearch"
+        # Génération du fichier de secrets sous forme de variables d'environnement
+        vault.hashicorp.com/agent-inject-template-es-creds: |
+          {{ with secret "secret/data/search-api/elasticsearch" }}
+          export ES_USER="{{ .Data.data.username }}"
+          export ES_PASSWORD="{{ .Data.data.password }}"
+          {{ end }}
+    spec:
+      # Sécurité au niveau du Pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+      - name: search-api
+        image: myregistry/search:1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        # Sécurité au niveau du conteneur
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: ELASTICSEARCH_URL
+          value: "https://elasticsearch-es-http.search.svc:9200"
+        # Énergie : Empreinte CPU/Mémoire minime adaptée à un service API stateless
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        # Probes de santé pour garantir le bon routage du trafic
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 2
+---
+# Service Kubernetes interne (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app.kubernetes.io/name: search-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: search-platform
+spec:
+  type: ClusterIP # Exposition strictement interne
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: search-api
+---
+# HPA pour l'efficacité énergétique : Permet de réduire à 2 réplicas hors charge et de monter si nécessaire
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: search-api-hpa
+  namespace: search
+  labels:
+    app.kubernetes.io/name: search-api
+    app.kubernetes.io/part-of: search-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: search-api
+  minReplicas: 2 # Respecte la consigne initiale de 2 réplicas tout en autorisant le scale-up
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80 # Énergie : Exploitation optimale des CPU attribués avant mise à l'échelle

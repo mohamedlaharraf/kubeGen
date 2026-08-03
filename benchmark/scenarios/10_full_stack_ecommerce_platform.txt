@@ -1,0 +1,26 @@
+Déploie une plateforme e-commerce complète dans le namespace "shop" :
+
+1. "storefront" (frontend Next.js, image myregistry/storefront:4.1) :
+   - 3 réplicas, port 3000, exposé publiquement via Ingress sur
+     "shop.exemple.com" avec TLS.
+   - Scale automatiquement entre 3 et 12 réplicas selon la charge CPU.
+   - Dépend du service "catalog-api".
+
+2. "catalog-api" (backend Go, image myregistry/catalog:2.3) :
+   - 4 réplicas, port 8081, accessible uniquement en interne.
+   - Se connecte à une base PostgreSQL gérée par l'opérateur CrunchyData
+     (PostgresCluster, 2 instances, sauvegardes automatiques
+     quotidiennes) et à un cache Redis ("catalog-cache", 1 réplica,
+     6Gi de RAM, pas de persistance nécessaire).
+   - Requêtes/limites CPU et mémoire bien dimensionnées : cette API est
+     critique en heures de pointe (10h-22h) mais quasi inutilisée la
+     nuit, donc je veux que ça scale vers le bas la nuit pour économiser
+     les ressources.
+
+3. Isolation réseau stricte : seul "storefront" peut initier des
+   connexions vers "catalog-api", et seul "catalog-api" peut atteindre
+   la base PostgreSQL et le cache Redis. Aucun autre trafic est-ouest
+   n'est autorisé dans le namespace.
+
+Un budget de disruption doit garantir qu'au moins 2 réplicas de chaque
+service restent disponibles pendant les mises à jour de nœuds.

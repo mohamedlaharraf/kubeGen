@@ -1,0 +1,8 @@
+Déploie un cluster Kafka "events-broker" (image bitnami/kafka:3.7,
+namespace "streaming") en 3 réplicas avec identité réseau stable
+(chaque broker doit garder le même nom au redémarrage). Chaque broker
+a besoin d'un volume persistant dédié de 50Gi (stockage SSD, classe
+"fast-ssd") qui ne doit jamais être supprimé même si le pod est recréé.
+Port 9092 exposé uniquement à l'intérieur du cluster. Pour la
+résilience, les 3 réplicas ne doivent jamais être planifiés sur le même
+nœud physique. Ressources : 2 CPU / 4Gi de RAM par broker.

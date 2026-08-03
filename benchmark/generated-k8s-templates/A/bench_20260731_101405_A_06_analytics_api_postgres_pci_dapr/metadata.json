@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Déploie une API d'analytics appelée \"analytics-api\", image\nmyregistry/analytics:2.0, namespace \"data\", port 8080. Elle doit se\nconnecter à une base de données gérée par l'opérateur CrunchyData\nPostgreSQL (PostgresCluster avec 3 instances et réplication synchrone).\nL'application doit aussi être conforme à la norme PCI-DSS niveau 1\n(chiffrement au repos obligatoire pour tous les volumes, rotation des\nclés tous les 90 jours). Utilise aussi Dapr comme sidecar pour la\ncommunication pub/sub avec les autres services de l'entreprise.",
+  "latency_seconds": 10.37,
+  "output_chars": 7272,
+  "prompt_tokens": 752,
+  "output_tokens": 2107,
+  "total_tokens": 2859,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:15:26.964829"
+}

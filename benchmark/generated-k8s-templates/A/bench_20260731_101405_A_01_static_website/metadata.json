@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Déploie un site web statique appelé \"landing-page\" (image nginx:1.27,\nnamespace \"web\"), servi sur le port 80. Un seul réplica suffit, pas de\nbase de données ni de stockage persistant. Accessible depuis internet\nvia le domaine \"www.exemple.com\", sans TLS pour l'instant.\n",
+  "latency_seconds": 5.41,
+  "output_chars": 3624,
+  "prompt_tokens": 688,
+  "output_tokens": 1040,
+  "total_tokens": 1728,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:14:18.021551"
+}

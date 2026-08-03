@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Déploie une plateforme e-commerce complète dans le namespace \"shop\" :\n\n1. \"storefront\" (frontend Next.js, image myregistry/storefront:4.1) :\n   - 3 réplicas, port 3000, exposé publiquement via Ingress sur\n     \"shop.exemple.com\" avec TLS.\n   - Scale automatiquement entre 3 et 12 réplicas selon la charge CPU.\n   - Dépend du service \"catalog-api\".\n\n2. \"catalog-api\" (backend Go, image myregistry/catalog:2.3) :\n   - 4 réplicas, port 8081, accessible uniquement en interne.\n   - Se connecte à une base PostgreSQL gérée par l'opérateur CrunchyData\n     (PostgresCluster, 2 instances, sauvegardes automatiques\n     quotidiennes) et à un cache Redis (\"catalog-cache\", 1 réplica,\n     6Gi de RAM, pas de persistance nécessaire).\n   - Requêtes/limites CPU et mémoire bien dimensionnées : cette API est\n     critique en heures de pointe (10h-22h) mais quasi inutilisée la\n     nuit, donc je veux que ça scale vers le bas la nuit pour économiser\n     les ressources.\n\n3. Isolation réseau stricte : seul \"storefront\" peut initier des\n   connexions vers \"catalog-api\", et seul \"catalog-api\" peut atteindre\n   la base PostgreSQL et le cache Redis. Aucun autre trafic est-ouest\n   n'est autorisé dans le namespace.\n\nUn budget de disruption doit garantir qu'au moins 2 réplicas de chaque\nservice restent disponibles pendant les mises à jour de nœuds.\n",
+  "latency_seconds": 15.56,
+  "output_chars": 12781,
+  "prompt_tokens": 992,
+  "output_tokens": 3754,
+  "total_tokens": 4746,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:16:34.020742"
+}

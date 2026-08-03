@@ -1,0 +1,8 @@
+Déploie un worker Python "image-resizer" (image myregistry/resizer:3.2,
+namespace "media") qui consomme des messages depuis une file RabbitMQ
+("resize-queue", hôte à lire depuis le ConfigMap "rabbitmq-config", clé
+"host"). Pas de port HTTP exposé. Je veux qu'il scale automatiquement
+en fonction du nombre de messages en attente dans la file (KEDA), de 0
+au repos jusqu'à 10 réplicas maximum en pic de charge, pour économiser
+un maximum de ressources quand la file est vide. Pas de stockage
+persistant nécessaire.

@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Déploie un worker Python \"image-resizer\" (image myregistry/resizer:3.2,\nnamespace \"media\") qui consomme des messages depuis une file RabbitMQ\n(\"resize-queue\", hôte à lire depuis le ConfigMap \"rabbitmq-config\", clé\n\"host\"). Pas de port HTTP exposé. Je veux qu'il scale automatiquement\nen fonction du nombre de messages en attente dans la file (KEDA), de 0\nau repos jusqu'à 10 réplicas maximum en pic de charge, pour économiser\nun maximum de ressources quand la file est vide. Pas de stockage\npersistant nécessaire.\n",
+  "latency_seconds": 6.72,
+  "output_chars": 4048,
+  "prompt_tokens": 749,
+  "output_tokens": 1164,
+  "total_tokens": 1913,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:14:48.800720"
+}

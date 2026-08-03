@@ -1,0 +1,9 @@
+Déploie une API de paiement Node.js appelée "checkout-api", image
+myregistry/checkout:1.4.2, namespace "payments". Elle doit tourner en 3
+réplicas, exposer le port 8080 en HTTP. Elle a besoin d'une variable
+d'environnement NODE_ENV=production et d'un mot de passe base de données
+DB_PASSWORD à lire depuis le secret "checkout-db-secret". Le trafic est
+très faible la nuit (entre minuit et 6h) et très élevé entre 9h et midi :
+je veux que ça scale automatiquement pour économiser de l'énergie/coût
+aux heures creuses, avec un minimum de 2 réplicas et un maximum de 8.
+Pas de stockage persistant nécessaire. La sécurité est primordiale.

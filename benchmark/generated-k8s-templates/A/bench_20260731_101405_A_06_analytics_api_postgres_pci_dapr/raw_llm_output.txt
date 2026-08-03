@@ -1,0 +1,229 @@
+# --- HYPOTHÈSES ET CONFIGURATION INITIALE ---
+# 1. Namespace 'data' créé ou préexistant.
+# 2. Base de données : Déploiement d'un PostgresCluster via l'opérateur CrunchyData (pgo.crunchydata.com/v1beta1).
+# 3. PCI-DSS v1 (Chiffrement au repos) : Le stockage Kubernetes s'appuie sur une StorageClass chiffrée au niveau de l'infrastructure (ex: EBS chiffré KMS).
+# 4. PCI-DSS v1 (Rotation des clés 90 jours) : Implémentée au niveau de la configuration de l'opérateur Postgres via 'encryption.keyRotation' et gérée par KMS.
+# 5. Dapr Sidecar : Injecté via des annotations Kubernetes standards sur le Deployment.
+# 6. Énergie / FinOps : Requests CPU/Mémoire ajustés au plus juste pour limiter l'empreinte carbone tout en garantissant la H.A. HPA configuré avec scalabilité dynamique.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    app.kubernetes.io/part-of: analytics-platform
+    pci-dss/compliance-level: "1"
+
+---
+# --- BASE DE DONNÉES CRUNCHYDATA POSTGRESQL (HA & SYNCHRONE) ---
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: analytics-db
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-db
+    app.kubernetes.io/instance: analytics-db-main
+    app.kubernetes.io/part-of: analytics-platform
+spec:
+  postgresVersion: 15
+  instances:
+    - name: instance1
+      # PCI-DSS & Énergie : 3 instances pour HA synchrone sans sur-provisionner excessivement
+      replicas: 3
+      dataVolumeClaimSpec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 50Gi
+        # PCI-DSS : La StorageClass sous-jacente doit impérativement être chiffrée au repos (AES-256)
+        storageClassName: encrypted-block-storage
+      resources:
+        # Énergie : Utilisation raisonnée des ressources processeurs pour la BDD
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+  # PCI-DSS : Alignement avec la politique de réplication synchrone strict
+  synchronousDataReplication: true
+  backups:
+    pgbackrest:
+      image: registry.developers.crunchydata.com/crunchydata/pgo-pgbackrest:centos8-2.41-0
+      repos:
+        - name: repo1
+          volume:
+            volumeClaimSpec:
+              accessModes:
+                - "ReadWriteOnce"
+              resources:
+                requests:
+                  storage: 100Gi
+              storageClassName: encrypted-block-storage
+
+---
+# --- APPLICATION ANALYTICS API ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/version: "2.0"
+    app.kubernetes.io/part-of: analytics-platform
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics-api
+  template:
+    metadata:
+      labels:
+        app: analytics-api
+        app.kubernetes.io/name: analytics-api
+        app.kubernetes.io/version: "2.0"
+        app.kubernetes.io/part-of: analytics-platform
+        pci-dss/scope: "true"
+      annotations:
+        # Configuration de l'injection Dapr (Sidecar Pub/Sub)
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "analytics-api"
+        dapr.io/app-port: "8080"
+        dapr.io/enable-metrics: "true"
+        # Énergie : Optimisation des ressources demandées par le sidecar Dapr
+        dapr.io/sidecar-cpu-request: "50m"
+        dapr.io/sidecar-memory-request: "64Mi"
+        dapr.io/sidecar-cpu-limit: "250m"
+        dapr.io/sidecar-memory-limit: "256Mi"
+        # PCI-DSS : Annotation de traçabilité pour rotation des clés 90 jours
+        security.pci-dss.kms/key-rotation-period: "90d"
+    spec:
+      # Sécurité : Exécution sous un utilisateur non-root pour PCI-DSS
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: analytics-api
+          image: myregistry/analytics:2.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: DB_HOST
+              value: "analytics-db-primary.data.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "analytics"
+            # Les identifiants doivent être extraits d'un Secret Kubernetes
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-db-pguser-analytics
+                  key: user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: analytics-db-pguser-analytics
+                  key: password
+          # Énergie : Demandes ajustées au strict nécessaire (requests réduits) pour maximiser la densité de pods par nœud
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # Sécurité & Robustesse : Probes HTTP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            successThreshold: 1
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        # Un volume temporaire en mémoire est nécessaire pour supporter readOnlyRootFilesystem sans écriture disque
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+
+---
+# --- SERVICE KUBERNETES ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/version: "2.0"
+    app.kubernetes.io/part-of: analytics-platform
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: analytics-api
+
+---
+# --- EFFICACITÉ ÉNERGÉTIQUE : AUTOSCALING DYNAMIQUE (HPA) ---
+# Énergie : Scalabilité automatique pour réduire les pods au minimum (1 ou 2) lors des périodes creuses
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-api-hpa
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/part-of: analytics-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

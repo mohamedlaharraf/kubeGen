@@ -1,0 +1,24 @@
+{
+  "pipeline_latency_seconds": 16.553,
+  "total_latency_seconds": 16.553,
+  "llm_calls": {
+    "total_calls": 6,
+    "failed_calls": 6,
+    "total_latency_seconds": 5.632,
+    "average_latency_seconds": 0.939,
+    "tokens_known": false,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_tokens": 0,
+    "by_agent": {
+      "Agent 1 - Analyse (extraction)": {
+        "calls": 6,
+        "failed_calls": 6,
+        "latency_seconds": 5.632,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "tokens_known": false
+      }
+    }
+  }
+}

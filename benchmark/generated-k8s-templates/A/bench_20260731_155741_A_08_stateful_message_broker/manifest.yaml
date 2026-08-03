@@ -1,0 +1,159 @@
+# ---
+# EcoKubeGen Manifest - Namespace Setup
+# ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: streaming
+  labels:
+    app.kubernetes.io/part-of: events-broker
+---
+# ---
+# EcoKubeGen Manifest - Headless Service pour identité réseau stable (StatefulSet)
+# ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: events-broker
+  namespace: streaming
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: events-broker
+    app.kubernetes.io/part-of: events-broker
+spec:
+  clusterIP: None # Headless service requis pour la découverte des pairs dans un StatefulSet Kafka
+  ports:
+    - name: tcp-client
+      port: 9092
+      targetPort: kafka-client
+  selector:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: events-broker
+---
+# ---
+# EcoKubeGen Manifest - Kafka StatefulSet
+# ---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: events-broker
+  namespace: streaming
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: events-broker
+    app.kubernetes.io/part-of: events-broker
+    app.kubernetes.io/version: "3.7"
+spec:
+  serviceName: events-broker
+  replicas: 3 # Exigence explicite de 3 réplicas pour la haute disponibilité
+  podManagementPolicy: Parallel # Réduit le temps de démarrage global du cluster pour économiser l'énergie lors des déploiements
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+      app.kubernetes.io/instance: events-broker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka
+        app.kubernetes.io/instance: events-broker
+        app.kubernetes.io/part-of: events-broker
+        app.kubernetes.io/version: "3.7"
+    spec:
+      # SÉCURITÉ: Utilisation d'un utilisateur non-root (Bitnami standard UID 1001)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      # ANTI-AFFINITÉ: Garantit l'étalement strict des pods sur des nœuds physiques distincts
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/instance
+                    operator: In
+                    values:
+                      - events-broker
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: kafka
+          image: bitnami/kafka:3.7 # Utilisation d'un tag explicite (pas de latest)
+          imagePullPolicy: IfNotPresent # Économie de bande passante et d'énergie au démarrage
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false # Kafka nécessite l'écriture sur /opt/bitnami/kafka et logs temporaires
+            capabilities:
+              drop:
+                - ALL
+          env:
+            # Mode KRaft (sans Zookeeper) configuré par défaut pour Bitnami 3.x pour réduire l'empreinte mémoire/CPU globale
+            - name: KAFKA_CFG_NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KAFKA_CFG_PROCESS_ROLES
+              value: "controller,broker"
+            - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
+              value: "events-broker-0.events-broker.streaming.svc.cluster.local:9093,events-broker-1.events-broker.streaming.svc.cluster.local:9093,events-broker-2.events-broker.streaming.svc.cluster.local:9093"
+            - name: KAFKA_CFG_LISTENERS
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+            - name: KAFKA_CFG_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://$(POD_NAME).events-broker.streaming.svc.cluster.local:9092"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            # OPTIMISATION ÉNERGÉTIQUE ET RAM: Limite le tas Java pour laisser de la mémoire au cache de page OS sans Out-Of-Memory
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xms2g -Xmx2g"
+          ports:
+            - name: kafka-client
+              containerPort: 9092
+            - name: controller
+              containerPort: 9093
+          # RESSOURCES: Requests & Limits alignés sur les spécifications exactes pour un dimensionnement précis
+          # Évite la sur-allocation de CPU et garantit un découpage prévisible sur le cluster
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          # PROBES: Détection précoce des pannes pour éviter le gaspillage d'instructions CPU sur des pods bloqués
+          readinessProbe:
+            tcpSocket:
+              port: kafka-client
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: kafka-client
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/kafka
+  # PERSISTANCE: Définition du dynamic volume provisioning avec lifecycle indépendant du pod
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: kafka
+          app.kubernetes.io/instance: events-broker
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "fast-ssd" # Utilisation explicite de la classe SSD demandée
+        resources:
+          requests:
+            storage: 50Gi # Ajusté précisément pour éviter le surprovisionnement de stockage physique

@@ -1,0 +1,537 @@
+# Manifeste Kubernetes pour la plateforme e-commerce
+# Namespace dédié pour l'isolation des ressources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+
+---
+# -------------------------------------------------------------------
+# NETWORK POLICIES (Isolation réseau stricte)
+# -------------------------------------------------------------------
+# 1. Deny All par défaut pour le trafic Ingress et Egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: shop
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# 2. NetworkPolicy pour Storefront (Frontend)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: storefront-network-policy
+  namespace: shop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: storefront
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Autorise le trafic Ingress public (depuis le contrôleur Ingress)
+  - ports:
+    - protocol: TCP
+      port: 3000
+  egress:
+  # Autorise la communication uniquement vers catalog-api
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: catalog-api
+    ports:
+    - protocol: TCP
+      port: 8081
+  # Autorise la résolution DNS au sein du cluster (nécessaire pour la résolution de nom)
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# 3. NetworkPolicy pour Catalog API (Backend)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalog-api-network-policy
+  namespace: shop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: catalog-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Seul storefront peut contacter catalog-api
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: storefront
+    ports:
+    - protocol: TCP
+      port: 8081
+  egress:
+  # Seul catalog-api peut contacter PostgreSQL et Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: catalog-cache
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to:
+    - podSelector:
+        postgres-operator.crunchydata.com/cluster: postgres-catalog
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Autorise la résolution DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# 4. NetworkPolicy pour Redis Cache
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: catalog-cache-network-policy
+  namespace: shop
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: catalog-cache
+  policyTypes:
+  - Ingress
+  ingress:
+  # Seul catalog-api peut contacter Redis
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: catalog-api
+    ports:
+    - protocol: TCP
+      port: 6379
+
+---
+# 5. NetworkPolicy pour PostgreSQL (CrunchyData)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-network-policy
+  namespace: shop
+spec:
+  podSelector:
+    matchLabels:
+      postgres-operator.crunchydata.com/cluster: postgres-catalog
+  policyTypes:
+  - Ingress
+  ingress:
+  # Seul catalog-api peut contacter la base de données
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: catalog-api
+    ports:
+    - protocol: TCP
+      port: 5432
+
+---
+# -------------------------------------------------------------------
+# POSTGRESQL (CrunchyData Operator)
+# -------------------------------------------------------------------
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: postgres-catalog
+  namespace: shop
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  postgresVersion: 15
+  instances:
+    - name: instance1
+      replicas: 2
+      dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 20Gi
+  backups:
+    pgbackrest:
+      image: registry.developers.crunchydata.com/crunchydata/crunchy-pgbackrest:ubi8-2.41-4
+      repos:
+      - name: repo1
+        s3:
+          bucket: "backups"
+          endpoint: "s3.amazonaws.com"
+          region: "us-east-1"
+        schedules:
+          # Sauvegarde quotidienne complète à 2h du matin
+          full: "0 2 * * *"
+
+---
+# -------------------------------------------------------------------
+# REDIS CACHE (catalog-cache)
+# -------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-cache
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: catalog-cache
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: catalog-cache
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: catalog-cache
+        app.kubernetes.io/part-of: ecommerce-platform
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+      - name: redis
+        # Tag explicite au lieu de 'latest'
+        image: redis:7.0-alpine
+        command: ["redis-server", "--maxmemory", "5.5gb", "--maxmemory-policy", "allkeys-lru"]
+        ports:
+        - containerPort: 6379
+          name: redis
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        # Efficacité énergétique: Requests ajustés au besoin réel minimal pour éviter la réservation inutile du nœud
+        resources:
+          requests:
+            cpu: 100m
+            memory: 1Gi
+          limits:
+            cpu: 500m
+            memory: 6Gi
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-cache
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: catalog-cache
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app.kubernetes.io/name: catalog-cache
+
+---
+# -------------------------------------------------------------------
+# CATALOG-API (Backend Go)
+# -------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-api
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: catalog-api
+    app.kubernetes.io/version: "2.3"
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # Nombre par défaut fixé à 4 (géré dynamiquement via HPA pour déteindre/réduire la nuit)
+  replicas: 4
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: catalog-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: catalog-api
+        app.kubernetes.io/version: "2.3"
+        app.kubernetes.io/part-of: ecommerce-platform
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+      - name: catalog-api
+        image: myregistry/catalog:2.3
+        ports:
+        - containerPort: 8081
+          name: http
+        env:
+        - name: REDIS_HOST
+          value: "catalog-cache"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: DB_HOST
+          value: "postgres-catalog-primary"
+        - name: DB_PORT
+          value: "5432"
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        # Efficacité énergétique: CPU request modéré pour permettre un scaling fluide la nuit vers minReplicas (2)
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-api
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: catalog-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8081
+    targetPort: 8081
+    name: http
+  selector:
+    app.kubernetes.io/name: catalog-api
+
+---
+# Autoscaling pour catalog-api permettant de reduire les pods la nuit quand le trafic chute
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: catalog-api-hpa
+  namespace: shop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: catalog-api
+  # Efficacité énergétique: Réduction jusqu'à 2 pods pendant les heures creuses nocturnes
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+---
+# -------------------------------------------------------------------
+# STOREFRONT (Frontend Next.js)
+# -------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storefront
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: storefront
+    app.kubernetes.io/version: "4.1"
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: storefront
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: storefront
+        app.kubernetes.io/version: "4.1"
+        app.kubernetes.io/part-of: ecommerce-platform
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+      - name: storefront
+        image: myregistry/storefront:4.1
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: CATALOG_API_URL
+          value: "http://catalog-api:8081"
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        # Efficacité énergétique: Demandes CPU/RAM optimisées pour Next.js (SSR / statique)
+        resources:
+          requests:
+            cpu: 150m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storefront
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: storefront
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+  selector:
+    app.kubernetes.io/name: storefront
+
+---
+# HorizontalPodAutoscaler pour Storefront (3 à 12 réplicas)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: storefront-hpa
+  namespace: shop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: storefront
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+
+---
+# Ingress public pour Storefront avec HTTPS/TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: storefront-ingress
+  namespace: shop
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod" # Hypothèse: cert-manager utilisé pour le TLS automatique
+spec:
+  tls:
+  - hosts:
+    - shop.exemple.com
+    secretName: shop-exemple-com-tls
+  rules:
+  - host: shop.exemple.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: storefront
+            port:
+              number: 3000
+
+---
+# -------------------------------------------------------------------
+# POD DISRUPTION BUDGETS (Garantie de disponibilité >= 2 pods)
+# -------------------------------------------------------------------
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: storefront-pdb
+  namespace: shop
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: storefront
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: catalog-api-pdb
+  namespace: shop
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: catalog-api

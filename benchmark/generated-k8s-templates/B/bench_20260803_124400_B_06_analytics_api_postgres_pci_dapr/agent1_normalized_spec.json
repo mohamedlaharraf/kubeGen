@@ -1,0 +1,108 @@
+{
+  "architecture_type": "single",
+  "namespace": "data",
+  "components": [
+    {
+      "component_name": "analytics-api",
+      "workload_type": "Deployment",
+      "image": "myregistry/analytics:2.0",
+      "replicas": 1,
+      "labels": {
+        "app": "analytics-api"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [
+        {
+          "name": "dapr",
+          "image": "daprio/daprd:1.12.0",
+          "purpose": "Communication pub/sub avec les autres services de l'entreprise",
+          "ports": [],
+          "env_vars": [],
+          "resource_hints": null
+        }
+      ],
+      "depends_on": [],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [
+        "Conformité à la norme PCI-DSS niveau 1",
+        "Chiffrement au repos obligatoire pour tous les volumes",
+        "Rotation des clés de chiffrement tous les 90 jours"
+      ],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "Procédure/Politique de rotation des clés de chiffrement tous les 90 jours pour conformité PCI-DSS niveau 1",
+      "suggested_kind": null
+    },
+    {
+      "text": "Base de données PostgresCluster (3 instances, réplication synchrone) gérée par l'opérateur CrunchyData PostgreSQL",
+      "suggested_kind": "PostgresCluster"
+    }
+  ],
+  "raw_user_request": "Déploie une API d'analytics appelée \"analytics-api\", image\nmyregistry/analytics:2.0, namespace \"data\", port 8080. Elle doit se\nconnecter à une base de données gérée par l'opérateur CrunchyData\nPostgreSQL (PostgresCluster avec 3 instances et réplication synchrone).\nL'application doit aussi être conforme à la norme PCI-DSS niveau 1\n(chiffrement au repos obligatoire pour tous les volumes, rotation des\nclés tous les 90 jours). Utilise aussi Dapr comme sidecar pour la\ncommunication pub/sub avec les autres services de l'entreprise.",
+  "ambiguities": [
+    {
+      "field": "components[0].replicas",
+      "question": "Nombre de réplicas non spécifié pour analytics-api.",
+      "assumption_made": "Définition de 1 réplica par défaut.",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[0].sidecars[0].image",
+      "question": "Quelle version d'image exacte pour le sidecar Dapr ?",
+      "assumption_made": "Utilisation de l'image standard daprio/daprd:1.12.0.",
+      "confidence": "medium"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déploiement de l'API analytics-api avec l'image myregistry/analytics:2.0",
+      "Namespace data",
+      "Port de conteneur 8080",
+      "Connexion à une base de données PostgresCluster (3 instances, réplication synchrone) via l'opérateur CrunchyData",
+      "Conformité PCI-DSS niveau 1 (chiffrement au repos des volumes)",
+      "Rotation des clés tous les 90 jours",
+      "Utilisation de Dapr comme sidecar pour pub/sub"
+    ],
+    "requirements_mapped": [
+      "Déploiement de l'API analytics-api avec l'image myregistry/analytics:2.0",
+      "Namespace data",
+      "Port de conteneur 8080",
+      "Conformité PCI-DSS niveau 1 (chiffrement au repos des volumes)",
+      "Utilisation de Dapr comme sidecar pour pub/sub"
+    ],
+    "requirements_unmapped": [
+      "Rotation des clés tous les 90 jours",
+      "Connexion à une base de données PostgresCluster (3 instances, réplication synchrone) via l'opérateur CrunchyData"
+    ],
+    "repair_attempts": 2,
+    "self_check_passed": true
+  }
+}

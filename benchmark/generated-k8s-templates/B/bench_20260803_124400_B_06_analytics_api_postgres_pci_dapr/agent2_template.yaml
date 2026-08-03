@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-api-sa
+  namespace: data
+  labels:
+    app: analytics-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: analytics-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-api
+  template:
+    metadata:
+      labels:
+        app: analytics-api
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "analytics-api"
+        dapr.io/app-port: "8080"
+    spec:
+      serviceAccountName: analytics-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: analytics-api
+          image: myregistry/analytics:2.0
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+---
+{
+  "manifest_yaml": "# ℹ️ Exigence hors périmètre Kubernetes (aucune ressource K8s correspondante) : Procédure/Politique de rotation des clés de chiffrement tous les 90 jours pour conformité PCI-DSS niveau 1 — à tracer par un autre moyen (documentation, label, process d'équipe).",
+  "fields_addressed": [],
+  "fields_left_open": [],
+  "security_requirements_addressed": [],
+  "security_requirements_left_open": [
+    "Procédure/Politique de rotation des clés de chiffrement tous les 90 jours pour conformité PCI-DSS niveau 1 : Exigence opérationnelle et organisationnelle hors périmètre Kubernetes direct, nécessitant un KMS externe (ex: HashiCorp Vault, AWS KMS) et un processus de rotation automatisé/manuel."
+  ],
+  "observability_requirements_addressed": [],
+  "observability_requirements_left_open": [],
+  "ingress_addressed": [],
+  "ingress_left_open": [],
+  "rbac_addressed": [],
+  "rbac_left_open": [],
+  "warnings": [
+    "L'exigence de rotation des clés de chiffrement tous les 90 jours (PCI-DSS niveau 1) ne correspond à aucune ressource Kubernetes native ou CRD standard. Aucune ressource K8s n'a été générée pour cette règle."
+  ]
+}
+---
+# ⚠️ GÉNÉRATION LIBRE — non vérifiée par les contrôles habituels du pipeline, à valider manuellement avant tout déploiement.
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: postgres-cluster
+spec:
+  postgresVersion: 15
+  instances:
+    - name: instance1
+      replicas: 3
+      dataVolumeClaimSpec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+  synchronousReplication: true
+  backups:
+    pgbackrest:
+      repos:
+        - name: repo1
+          volume:
+            volumeClaimSpec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi

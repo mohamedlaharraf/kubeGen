@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Déploie une API de recherche \"search-api\" (image myregistry/search:1.0),\nnamespace \"search\", 2 réplicas, port 8080 en HTTP, exposée uniquement en\ninterne.\n\nElle a besoin d'un cluster Elasticsearch géré par l'opérateur ECK (Elastic\nCloud on Kubernetes) avec 3 nœuds de données et de l'authentification\ngérée via HashiCorp Vault pour injecter les credentials automatiquement\ndans les pods (Vault Agent Injector).\n",
+  "latency_seconds": 26.79,
+  "output_chars": 5384,
+  "prompt_tokens": 726,
+  "output_tokens": 1564,
+  "total_tokens": 2290,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:15:16.167595"
+}

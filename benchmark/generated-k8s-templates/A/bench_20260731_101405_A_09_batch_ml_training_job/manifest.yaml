@@ -1,0 +1,101 @@
+# Tâche ponctuelle d'entraînement ML
+# - Namespace: ml
+# - Type: Job (s'exécute une fois et ne se relance pas après succès)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-training
+  namespace: ml
+  labels:
+    app.kubernetes.io/name: model-training
+    app.kubernetes.io/component: ml-trainer
+    app.kubernetes.io/part-of: ml-pipeline
+    app.kubernetes.io/version: "0.9"
+spec:
+  # Pas de relance automatique du Job complet en cas d'échec pour éviter de réinterposer
+  # une lourde charge d'entraînement inutilement sur le cluster.
+  backoffLimit: 1
+  # Nettoyage automatique du Job terminé après 1 heure pour libérer l'empreinte mémoire du master
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: model-training
+        app.kubernetes.io/component: ml-trainer
+        app.kubernetes.io/part-of: ml-pipeline
+        app.kubernetes.io/version: "0.9"
+    spec:
+      # Exécution unique jusqu'à la fin du processus (pas de redémarrage si réussi)
+      restartPolicy: Never
+      
+      # SÉCURITÉ : Restriction des privilèges du pod
+      securityContext:
+        runAsNonRoot: true
+        # Valeur par défaut prudente pour un utilisateur non-root (ex: 10001)
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+
+      # EFFICACITÉ ÉNERGÉTIQUE ET PLACEMENT DES WORKLOADS
+      # 1. Tolérance pour autoriser la planification sur le pool "batch-efficient"
+      # (dans l'hypothèse où ce pool a une teinte/taint dédiée pour exclure le tout-venant)
+      tolerations:
+        - key: "node-pool"
+          operator: "Equal"
+          value: "batch-efficient"
+          effect: "NoSchedule"
+          
+      # 2. Règles d'affinité strictes (NodeAffinity)
+      # - Priorité absolue (required) pour planifier sur "batch-efficient"
+      # - Interdiction stricte de planifier sur "latency-critical"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: In
+                    values:
+                      - batch-efficient
+                  - key: node-pool
+                    operator: NotIn
+                    values:
+                      - latency-critical
+
+      containers:
+        - name: trainer
+          image: myregistry/ml-train:0.9
+          imagePullPolicy: IfNotPresent
+          
+          # SÉCURITÉ : Système de fichier en lecture seule
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          # RESSOURCES ET EFFICACITÉ ÉNERGÉTIQUE
+          # Requests = Limits (Guaranteed QoS) pour éviter l'épuisement mémoire (OOMKilled)
+          # et les commutations de contexte CPU coûteuses sur des calculs lourds de ML.
+          resources:
+            requests:
+              cpu: "8"
+              memory: "32Gi"
+            limits:
+              cpu: "8"
+              memory: "32Gi"
+              
+          # Volume temporaire en mémoire pour le système de fichier readOnlyRootFilesystem
+          # permettant au runtime d'écrire des fichiers temporaires (ex: /tmp) sans stockage persistant.
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-volume
+
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
