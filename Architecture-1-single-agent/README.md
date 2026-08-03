@@ -8,7 +8,7 @@ Utilisateur (exigences en langage naturel)
         │
         ▼
 ┌───────────────────────────────────────────┐
-│        Agent unique LLM (Gemma / API Gemini)│
+│        Agent unique LLM (Gemini / API Gemini)│
 │  - Analyse des exigences                   │
 │  - Génération de manifestes Kubernetes     │
 │  - Règles de bonnes pratiques / sécurité   │
@@ -53,8 +53,8 @@ $env:GOOGLE_API_KEY = "ta_clé_api"
 
 `GEMINI_API_KEY` fonctionne aussi si tu préfères ce nom.
 
-> Astuce : si tu veux un modèle plus léger/rapide, utilise `gemma-4-26b-a4b-it`
-> au lieu du défaut `gemma-4-31b-it` (voir section "Changer de modèle" plus bas).
+> Astuce : si tu veux un modèle plus léger/rapide, utilise `gemini-2.5-flash-lite`
+> au lieu du défaut `gemini-2.5-flash` (voir section "Changer de modèle" plus bas).
 
 ### c) Installer les dépendances Python du projet
 
@@ -70,7 +70,7 @@ pip install -r requirements.txt
 
 ```
 ecokubegen-v1-single-agent/
-├── config.py                  # Paramètres (modèle Gemma, clé API, dossier de sortie...)
+├── config.py                  # Paramètres (modèle Gemini, clé API, dossier de sortie...)
 ├── prompts.py                 # Le prompt système monolithique (les 4 responsabilités)
 ├── single_agent.py            # La classe SingleAgentGenerator (cœur de l'architecture 1)
 ├── main.py                    # CLI pour une génération unique
@@ -108,7 +108,7 @@ python main.py -r "Déploie une API Flask, 3 replicas, port 5000, accessible en 
 Options :
 - `-r / --requirement` : l'exigence en langage naturel
 - `-n / --name` : nom du sous-dossier de sortie (défaut : horodatage `run_YYYYMMDD_HHMMSS`)
-- `-m / --model` : nom du modèle Gemma à utiliser (défaut : `gemma-4-31b-it`)
+- `-m / --model` : nom du modèle Gemini à utiliser (défaut : `gemini-2.5-flash`)
 - `--max-output-tokens` : nombre max de tokens générés par l'appel LLM (défaut : `2048`)
 
 ### c) Résultat produit
@@ -171,17 +171,17 @@ ensuite les concaténer facilement pour l'analyse comparative finale.
 Pour tester avec un modèle plus léger ou plus puissant :
 
 ```bash
-python main.py -m gemma-4-26b-a4b-it -r "..."
+python main.py -m gemini-2.5-flash-lite -r "..."
 ```
 
 ou en variable d'environnement (pratique pour ne pas répéter `-m` à chaque fois) :
 
 ```bash
-export GEMMA_MODEL=gemma-4-26b-a4b-it
+export GEMINI_MODEL=gemini-2.5-flash-lite
 python main.py -r "..."
 ```
 
-Pour vérifier les modèles Gemma réellement disponibles pour ta clé :
+Pour vérifier les modèles Gemini réellement disponibles pour ta clé :
 
 ```bash
 curl "https://generativelanguage.googleapis.com/v1beta/models?key=TA_CLE"
@@ -196,8 +196,8 @@ curl "https://generativelanguage.googleapis.com/v1beta/models?key=TA_CLE"
 | `ResourceExhausted` / `429` | Quota gratuit dépassé | Attendre le renouvellement du quota ou passer à un modèle plus petit |
 | `404 NOT_FOUND ... is not found for API version v1beta` | Nom de modèle retiré/incorrect | Lister les modèles dispo (`curl .../v1beta/models?key=TA_CLE`) et utiliser `-m` avec un nom valide |
 | `RuntimeError: Réponse vide du modèle` | Budget de tokens épuisé par le "thinking" interne du modèle | Augmenter `--max-output-tokens`, ou vérifier `thinking_level` dans `single_agent.py` |
-| `yaml_valid: false` récurrent | Modèle trop petit / prompt mal suivi | Essayer `gemma-4-31b-it` (plus grand), ou baisser `TEMPERATURE` dans `config.py` |
-| Génération très lente | Modèle plus gros / charge côté API | Utiliser `gemma-4-26b-a4b-it` (plus rapide) |
+| `yaml_valid: false` récurrent | Modèle trop petit / prompt mal suivi | Essayer `gemini-2.5-flash` (plus grand que flash-lite), ou baisser `TEMPERATURE` dans `config.py` |
+| Génération très lente | Modèle plus gros / charge côté API | Utiliser `gemini-2.5-flash-lite` (plus rapide) |
 
 ## 7. Ce que ce projet mesure (pour le rapport final)
 

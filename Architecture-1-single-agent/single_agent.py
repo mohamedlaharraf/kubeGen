@@ -21,7 +21,7 @@ from google import genai
 from google.genai import types
 import yaml
 
-from config import MAX_OUTPUT_TOKENS, GEMMA_MODEL, GOOGLE_API_KEY, OUTPUT_DIR, TEMPERATURE
+from config import MAX_OUTPUT_TOKENS, GEMINI_MODEL, GOOGLE_API_KEY, OUTPUT_DIR, TEMPERATURE
 from prompts import SYSTEM_PROMPT
 
 
@@ -29,7 +29,7 @@ class SingleAgentGenerator:
     """Génère un manifeste Kubernetes à partir d'une exigence en langage naturel,
     en un seul appel LLM (architecture monolithique)."""
 
-    def __init__(self, model: str = GEMMA_MODEL, temperature: float = TEMPERATURE,
+    def __init__(self, model: str = GEMINI_MODEL, temperature: float = TEMPERATURE,
                  output_dir: str = OUTPUT_DIR, api_key: str = GOOGLE_API_KEY,
                  max_output_tokens: int = MAX_OUTPUT_TOKENS):
         if not api_key:

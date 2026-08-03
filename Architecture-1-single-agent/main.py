@@ -4,7 +4,7 @@ Point d'entrée en ligne de commande pour l'Architecture 1.
 Exemples :
     python main.py -r "Déploie une API Flask, 3 replicas, port 5000, exposée en interne"
     python main.py            # mode interactif
-    python main.py -r "..." -m gemma-4-26b-a4b-it -n test_flask
+    python main.py -r "..." -m gemini-2.5-flash -n test_flask
 
 Nécessite une clé API Google AI Studio dans la variable d'environnement
 GOOGLE_API_KEY (ou GEMINI_API_KEY) : https://aistudio.google.com/apikey
@@ -17,7 +17,7 @@ from single_agent import SingleAgentGenerator
 
 def main():
     parser = argparse.ArgumentParser(
-        description="EcoKubeGen — Architecture 1 : Agent unique monolithique (Gemma via l'API Gemini)."
+        description="EcoKubeGen — Architecture 1 : Agent unique monolithique (Gemini via l'API Gemini)."
     )
     parser.add_argument(
         "-r", "--requirement", type=str, default=None,
@@ -29,7 +29,7 @@ def main():
     )
     parser.add_argument(
         "-m", "--model", type=str, default=None,
-        help="Nom du modèle Gemma à utiliser (défaut: variable d'env GEMMA_MODEL ou 'gemma-4-31b-it').",
+        help="Nom du modèle Gemini à utiliser (défaut: variable d'env GEMINI_MODEL ou 'gemini-2.5-flash').",
     )
     parser.add_argument(
         "--max-output-tokens", type=int, default=None,
