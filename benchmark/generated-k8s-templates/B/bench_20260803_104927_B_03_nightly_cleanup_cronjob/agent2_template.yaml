@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ops
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: log-cleanup-sa
+  namespace: ops
+  labels:
+    app: log-cleanup
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-logs
+  namespace: ops
+  labels:
+    app: log-cleanup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: log-cleanup
+  namespace: ops
+  labels:
+    app: log-cleanup
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: log-cleanup
+        spec:
+          serviceAccountName: log-cleanup-sa
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: log-cleanup
+              image: myregistry/cleanup-tool:1.0
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: shared-logs
+                  mountPath: /var/log/shared
+          volumes:
+            - name: shared-logs
+              persistentVolumeClaim:
+                claimName: shared-logs

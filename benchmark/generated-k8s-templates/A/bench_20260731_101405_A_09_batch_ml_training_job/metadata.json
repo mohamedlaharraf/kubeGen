@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Lance une tâche ponctuelle \"model-training\" (image myregistry/ml-train:0.9,\nnamespace \"ml\") qui entraîne un modèle et se termine d'elle-même une fois\nfinie (pas de relance automatique). Elle a besoin de beaucoup de\nressources : 8 CPU et 32Gi de RAM. Pour des raisons de coût et\nd'efficacité énergétique, cette tâche doit être planifiée en priorité\nsur les nœuds du pool \"batch-efficient\" (label \"node-pool:\nbatch-efficient\" sur les nœuds concernés), et jamais sur les nœuds du\npool \"latency-critical\" réservés aux services temps réel. Pas de port\nréseau, pas de stockage persistant (les résultats sont uploadés vers un\nbucket externe par le programme lui-même).\n",
+  "latency_seconds": 5.67,
+  "output_chars": 3550,
+  "prompt_tokens": 789,
+  "output_tokens": 944,
+  "total_tokens": 1733,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:16:18.127758"
+}

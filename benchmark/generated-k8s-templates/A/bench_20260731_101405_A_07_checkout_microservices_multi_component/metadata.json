@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Déploie une architecture microservices pour un système de paiement, dans le namespace \"payments\" :\n\n1. Un service \"checkout-api\" (Node.js, image myregistry/checkout:2.0) :\n   - 3 réplicas, port 8080 exposé en HTTP.\n   - Variable d'environnement NODE_ENV=production, et DB_PASSWORD à lire\n     depuis le secret \"checkout-db-secret\" (clé \"password\").\n   - Exposée à l'extérieur du cluster via le domaine checkout.exemple.com,\n     avec TLS.\n   - Doit pouvoir lister les ConfigMaps du namespace via l'API Kubernetes.\n   - Sidecar Envoy pour le service mesh.\n   - Trafic très faible la nuit (minuit à 6h), très élevé entre 9h et midi :\n     scale automatiquement, minimum 2 réplicas, maximum 8.\n   - Sécurité primordiale, exposée en interne uniquement pour tout le reste\n     (seul le port 8080 est public via l'Ingress).\n   - Ajoute des métriques Prometheus sur le port 9091.\n   - Dépend du service \"checkout-api\" -> \"order-worker\".\n\n2. Un service \"order-worker\" (Python, image myregistry/worker:1.5) :\n   - 2 réplicas, pas de port exposé (juste un worker asynchrone).\n   - Variable d'environnement QUEUE_URL à lire depuis le ConfigMap\n     \"worker-config\".\n   - Pas de stockage persistant nécessaire.\n\nLe tout dans un cluster de test unique (pas de multi-cluster nécessaire).\n",
+  "latency_seconds": 22.36,
+  "output_chars": 10630,
+  "prompt_tokens": 984,
+  "output_tokens": 3254,
+  "total_tokens": 4238,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:15:49.851317"
+}

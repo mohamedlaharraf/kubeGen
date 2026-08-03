@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: web
+  labels:
+    app.kubernetes.io/name: landing-page
+    app.kubernetes.io/part-of: web-stack
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: landing-page
+  namespace: web
+  labels:
+    app.kubernetes.io/name: landing-page
+    app.kubernetes.io/instance: landing-page-prod
+    app.kubernetes.io/version: "1.27"
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: web-stack
+spec:
+  # Énergie: Un seul réplica configuré comme demandé pour minimiser l'empreinte carbone à bas trafic
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: landing-page
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: landing-page
+        app.kubernetes.io/version: "1.27"
+    spec:
+      # Sécurité: Exécution avec un utilisateur non-root pour respecter le principe du moindre privilège
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101 # Utilisateur nginx non-root par défaut
+        runAsGroup: 101
+        fsGroup: 101
+      containers:
+      - name: nginx
+        # Sécurité: Utilisation d'un tag précis (1.27) plutôt que 'latest'
+        # Note: Utilisation de la version unprivileged officielle pour autoriser le port 8080 et le système de fichier en lecture seule
+        image: nginxinc/nginx-unprivileged:1.27
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        ports:
+        - name: http
+          containerPort: 8080 # Les images non-root Nginx utilisent le port 8080 par défaut
+        # Énergie: Dimensionnement minimaliste des ressources adapté à un site web statique pour éviter le sur-provisionnement
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 32Mi
+        # Probes de santé pour garantir le routage uniquement vers un pod fonctionnel
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        # Volumes temporaires en mémoire pour permettre le fonctionnement avec un readOnlyRootFilesystem
+        volumeMounts:
+        - name: cache
+          mountPath: /var/cache/nginx
+        - name: run
+          mountPath: /var/run
+      volumes:
+      - name: cache
+        emptyDir:
+          medium: Memory
+          sizeLimit: 10Mi
+      - name: run
+        emptyDir:
+          medium: Memory
+          sizeLimit: 1Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: landing-page
+  namespace: web
+  labels:
+    app.kubernetes.io/name: landing-page
+    app.kubernetes.io/part-of: web-stack
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: landing-page
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: landing-page
+  namespace: web
+  labels:
+    app.kubernetes.io/name: landing-page
+    app.kubernetes.io/part-of: web-stack
+  # Optionnel: Hypothèse d'utilisation de l'ingress controller NGINX standard
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: www.exemple.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: landing-page
+            port:
+              number: 80

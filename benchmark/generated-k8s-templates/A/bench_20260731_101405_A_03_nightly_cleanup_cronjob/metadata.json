@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Crée une tâche planifiée \"log-cleanup\" (image myregistry/cleanup-tool:1.0,\nnamespace \"ops\") qui s'exécute tous les jours à 3h du matin pour purger\nles logs de plus de 30 jours sur un volume partagé \"shared-logs\" (PVC\nexistant, montage en lecture-écriture). Pas besoin de port réseau. La\ntâche doit s'arrêter automatiquement si elle dépasse 15 minutes\nd'exécution, et ne pas relancer plus de 2 tentatives en cas d'échec.\n",
+  "latency_seconds": 4.04,
+  "output_chars": 2617,
+  "prompt_tokens": 736,
+  "output_tokens": 681,
+  "total_tokens": 1417,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T10:14:41.754485"
+}

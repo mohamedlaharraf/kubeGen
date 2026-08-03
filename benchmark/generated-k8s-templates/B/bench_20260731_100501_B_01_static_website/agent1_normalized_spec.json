@@ -1,0 +1,85 @@
+{
+  "architecture_type": "single",
+  "namespace": "web",
+  "components": [
+    {
+      "component_name": "landing-page",
+      "workload_type": "Deployment",
+      "image": "nginx:1.27",
+      "replicas": 1,
+      "labels": {
+        "app": "landing-page"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 80,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": {
+        "enabled": true,
+        "host": "www.exemple.com",
+        "path": "/",
+        "tls": false,
+        "tls_secret_name": null,
+        "ingress_class": null,
+        "api_style": "ingress",
+        "gateway_name": null,
+        "cert_manager_issuer": null,
+        "cert_manager_issuer_kind": "ClusterIssuer"
+      },
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "raw_user_request": "Déploie un site web statique appelé \"landing-page\" (image nginx:1.27,\nnamespace \"web\"), servi sur le port 80. Un seul réplica suffit, pas de\nbase de données ni de stockage persistant. Accessible depuis internet\nvia le domaine \"www.exemple.com\", sans TLS pour l'instant.\n",
+  "ambiguities": [],
+  "coverage": {
+    "requirements_detected": [
+      "Déployer un site web statique 'landing-page'",
+      "Utiliser l'image nginx:1.27",
+      "Déployer dans le namespace 'web'",
+      "Exposer sur le port 80",
+      "Un seul réplica",
+      "Pas de base de données ni de stockage persistant",
+      "Accessible depuis internet via www.exemple.com",
+      "Sans TLS pour l'instant"
+    ],
+    "requirements_mapped": [
+      "Déployer un site web statique 'landing-page'",
+      "Utiliser l'image nginx:1.27",
+      "Déployer dans le namespace 'web'",
+      "Exposer sur le port 80",
+      "Un seul réplica",
+      "Pas de base de données ni de stockage persistant",
+      "Accessible depuis internet via www.exemple.com",
+      "Sans TLS pour l'instant"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 0,
+    "self_check_passed": true
+  }
+}

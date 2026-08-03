@@ -1,0 +1,101 @@
+{
+  "architecture_type": "single",
+  "namespace": "search",
+  "components": [
+    {
+      "component_name": "search-api",
+      "workload_type": "Deployment",
+      "image": "myregistry/search:1.0",
+      "replicas": 2,
+      "labels": {
+        "app": "search-api"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [
+        "elasticsearch"
+      ],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [
+        "Exposition uniquement en interne (pas d'Ingress public)",
+        "Authentification et injection automatique des credentials via HashiCorp Vault (Vault Agent Injector)"
+      ],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "Injection automatique de secrets via annotations Vault Agent Injector",
+      "suggested_kind": "VaultAgentInjector"
+    },
+    {
+      "text": "Cluster Elasticsearch géré par l'opérateur ECK (Elastic Cloud on Kubernetes) avec 3 nœuds de données",
+      "suggested_kind": "Elasticsearch"
+    }
+  ],
+  "raw_user_request": "Déploie une API de recherche \"search-api\" (image myregistry/search:1.0),\nnamespace \"search\", 2 réplicas, port 8080 en HTTP, exposée uniquement en\ninterne.\n\nElle a besoin d'un cluster Elasticsearch géré par l'opérateur ECK (Elastic\nCloud on Kubernetes) avec 3 nœuds de données et de l'authentification\ngérée via HashiCorp Vault pour injecter les credentials automatiquement\ndans les pods (Vault Agent Injector).",
+  "ambiguities": [
+    {
+      "field": "components[0].workload_type",
+      "question": "Quel type de workload Kubernetes utiliser pour search-api ?",
+      "assumption_made": "Un Deployment a été retenu pour l'API applicative sans état.",
+      "confidence": "high"
+    },
+    {
+      "field": "components[1].workload_type",
+      "question": "Quel type de workload utiliser pour le cluster Elasticsearch ECK ?",
+      "assumption_made": "Une CustomResource de l'opérateur ECK (Kind Elasticsearch) a été retenue.",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déploiement d'une API search-api avec image myregistry/search:1.0",
+      "Namespace search",
+      "2 réplicas",
+      "Port 8080 HTTP exposé uniquement en interne",
+      "Cluster Elasticsearch de 3 nœuds géré par l'opérateur ECK",
+      "Authentification et injection de credentials via HashiCorp Vault Agent Injector",
+      "Dépendance de search-api envers le cluster Elasticsearch"
+    ],
+    "requirements_mapped": [
+      "Déploiement d'une API search-api avec image myregistry/search:1.0",
+      "Namespace search",
+      "2 réplicas",
+      "Port 8080 HTTP exposé uniquement en interne",
+      "Authentification et injection de credentials via HashiCorp Vault Agent Injector",
+      "Dépendance de search-api envers le cluster Elasticsearch"
+    ],
+    "requirements_unmapped": [
+      "Injection automatique de secrets via annotations Vault Agent Injector",
+      "Cluster Elasticsearch de 3 nœuds géré par l'opérateur ECK"
+    ],
+    "repair_attempts": 2,
+    "self_check_passed": true
+  }
+}

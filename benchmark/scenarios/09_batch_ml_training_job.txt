@@ -1,0 +1,10 @@
+Lance une tâche ponctuelle "model-training" (image myregistry/ml-train:0.9,
+namespace "ml") qui entraîne un modèle et se termine d'elle-même une fois
+finie (pas de relance automatique). Elle a besoin de beaucoup de
+ressources : 8 CPU et 32Gi de RAM. Pour des raisons de coût et
+d'efficacité énergétique, cette tâche doit être planifiée en priorité
+sur les nœuds du pool "batch-efficient" (label "node-pool:
+batch-efficient" sur les nœuds concernés), et jamais sur les nœuds du
+pool "latency-critical" réservés aux services temps réel. Pas de port
+réseau, pas de stockage persistant (les résultats sont uploadés vers un
+bucket externe par le programme lui-même).

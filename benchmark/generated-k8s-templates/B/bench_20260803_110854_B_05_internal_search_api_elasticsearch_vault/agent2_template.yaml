@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: search-api-sa
+  namespace: search
+  labels:
+    app: search-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app: search-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: search-api
+  template:
+    metadata:
+      labels:
+        app: search-api
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "search-api"
+    spec:
+      serviceAccountName: search-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: search-api
+          image: myregistry/search:1.0
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app: search-api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: search-api
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: search-api-netpol
+  namespace: search
+spec:
+  podSelector:
+    matchLabels:
+      app: search-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+
+---
+{
+  "manifest_yaml": "# ℹ️ Exigence hors périmètre Kubernetes (aucune ressource K8s correspondante) : Injection automatique de secrets via annotations Vault Agent Injector (kind supposé : VaultAgentInjector) — à tracer par un autre moyen (annotations Pod vault.hashicorp.com/agent-inject, documentation, process d'équipe).",
+  "fields_addressed": [],
+  "fields_left_open": [
+    "non_standard_requirement: Injection automatique de secrets via annotations Vault Agent Injector"
+  ],
+  "security_requirements_addressed": [],
+  "security_requirements_left_open": [
+    "Injection automatique de secrets via annotations Vault Agent Injector"
+  ],
+  "observability_requirements_addressed": [],
+  "observability_requirements_left_open": [],
+  "ingress_addressed": [],
+  "ingress_left_open": [],
+  "rbac_addressed": [],
+  "rbac_left_open": [],
+  "warnings": [
+    "Le kind 'VaultAgentInjector' n'est pas une ressource/CRD Kubernetes existante. L'injection Vault Agent s'effectue via des annotations sur le Pod (ex: vault.hashicorp.com/agent-inject: 'true') ou via l'opérateur Vault Secrets Operator."
+  ]
+}
+---
+{
+  "manifest_yaml": "# ⚠️ GÉNÉRATION LIBRE — non vérifiée par les contrôles habituels du pipeline, à valider manuellement avant tout déploiement.\napiVersion: elasticsearch.k8s.elastic.co/v1\nkind: Elasticsearch\nmetadata:\n  name: elasticsearch\nspec:\n  version: 8.11.0\n  nodeSets:\n  - name: default\n    count: 3\n    config:\n      node.store.allow_mmap: false\n",
+  "fields_addressed": [
+    "exigences_non_standard: Cluster Elasticsearch géré par l'opérateur ECK (3 nœuds)"
+  ],
+  "fields_left_open": [],
+  "security_requirements_addressed": [],
+  "security_requirements_left_open": [],
+  "observability_requirements_addressed": [],
+  "observability_requirements_left_open": [],
+  "ingress_addressed": [],
+  "ingress_left_open": [],
+  "rbac_addressed": [],
+  "rbac_left_open": [],
+  "warnings": [
+    "Ressource CRD non standard générée pour l'opérateur ECK Elasticsearch (elasticsearch.k8s.elastic.co/v1). Nécessite l'opérateur Elastic Cloud on Kubernetes pré-installé dans le cluster."
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemini-3.6-flash",
+  "temperature": 0.2,
+  "requirement": "Déploie un cluster Kafka \"events-broker\" (image bitnami/kafka:3.7,\nnamespace \"streaming\") en 3 réplicas avec identité réseau stable\n(chaque broker doit garder le même nom au redémarrage). Chaque broker\na besoin d'un volume persistant dédié de 50Gi (stockage SSD, classe\n\"fast-ssd\") qui ne doit jamais être supprimé même si le pod est recréé.\nPort 9092 exposé uniquement à l'intérieur du cluster. Pour la\nrésilience, les 3 réplicas ne doivent jamais être planifiés sur le même\nnœud physique. Ressources : 2 CPU / 4Gi de RAM par broker.\n",
+  "latency_seconds": 10.41,
+  "output_chars": 5956,
+  "prompt_tokens": 769,
+  "output_tokens": 1635,
+  "total_tokens": 2404,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-07-31T15:57:58.373078"
+}

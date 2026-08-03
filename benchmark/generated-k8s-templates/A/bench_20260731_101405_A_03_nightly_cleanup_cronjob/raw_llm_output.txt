@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: log-cleanup
+  namespace: ops
+  labels:
+    app.kubernetes.io/name: log-cleanup
+    app.kubernetes.io/component: maintenance
+    app.kubernetes.io/part-of: ops-tools
+    app.kubernetes.io/version: "1.0"
+spec:
+  # Exécution tous les jours à 3h du matin
+  schedule: "0 3 * * *"
+  # Évite les exécutions concurrentes pour préserver les ressources CPU/IO
+  concurrencyPolicy: Forbid
+  # Conservation minimale de l'historique des jobs pour réduire la charge sur etcd (Efficacité énergétique)
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: log-cleanup
+        app.kubernetes.io/component: maintenance
+        app.kubernetes.io/part-of: ops-tools
+    spec:
+      # Arrêt automatique après 15 minutes (900 secondes) pour éviter le gaspillage de ressources en cas de blocage
+      activeDeadlineSeconds: 900
+      # Limite à 2 tentatives en cas d'échec
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: log-cleanup
+            app.kubernetes.io/component: maintenance
+            app.kubernetes.io/part-of: ops-tools
+        spec:
+          restartPolicy: OnFailure
+          # Sécurité au niveau du Pod : utilisateur non-root
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+          containers:
+            - name: cleanup-tool
+              image: myregistry/cleanup-tool:1.0
+              imagePullPolicy: IfNotPresent
+              # Sécurité au niveau du conteneur
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              # Unité de nettoyage ponctuelle : requêtes CPU/Mémoire minimales adaptées (Efficacité énergétique)
+              # Évite le sur-provisionnement sur les nœuds du cluster
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "128Mi"
+              volumeMounts:
+                - name: shared-logs
+                  mountPath: /var/log/shared
+                  readOnly: false
+          volumes:
+            - name: shared-logs
+              persistentVolumeClaim:
+                # Hypothèse : Utilisation du PVC existant nommé "shared-logs" dans le namespace "ops"
+                claimName: shared-logs
