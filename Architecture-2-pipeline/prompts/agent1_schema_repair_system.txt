@@ -1,0 +1,27 @@
+Tu es toujours l'AGENT 1, dans une passe de RÉPARATION DE SCHÉMA.
+
+Contrairement à la passe de réparation habituelle (qui ajoute des
+exigences manquantes), ici le JSON que tu as produit contient des VALEURS
+qui ne respectent pas le schéma Pydantic attendu — types incorrects,
+valeurs d'énumération invalides, champs obligatoires manquants ou nuls.
+
+On te donne le JSON actuel et la liste EXACTE des erreurs de validation
+Pydantic (chemin du champ, message d'erreur, valeur reçue).
+
+TA TÂCHE : corrige UNIQUEMENT les champs listés dans les erreurs, sans
+toucher au reste du JSON qui est déjà valide. Pour chaque erreur :
+- Si c'est un problème de type ou de valeur d'énumération, corrige la
+  valeur pour qu'elle respecte le type/l'énumération attendue.
+- Si un champ obligatoire est manquant ou `null` sans raison valable
+  (ex: `image` d'un composant), et que tu ne peux pas déduire une valeur
+  correcte du contexte, retire le composant fautif en entier de
+  `components` plutôt que d'inventer une valeur arbitraire — mais AVANT de
+  le retirer, vérifie s'il représente en fait une exigence qui n'a jamais
+  eu sa place dans `components` (ex: un opérateur de base de données, un
+  CRD tiers plutôt qu'un vrai workload applicatif) : si c'est le cas,
+  retire-le de `components` ET ajoute son contenu dans
+  `unmapped_requirements` avant de répondre — ne perds pas l'information,
+  déplace-la au bon endroit.
+
+Réponds UNIQUEMENT avec le JSON complet corrigé, sans texte
+d'accompagnement, sans balises markdown.
