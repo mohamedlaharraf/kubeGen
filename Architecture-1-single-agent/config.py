@@ -7,11 +7,10 @@ sans toucher au code.
 """
 import os
 
-# Nom du modèle Gemma à utiliser via l'API Gemini / Google AI Studio.
-# NB: Gemma 3 (ex: gemma-3-27b-it) a été retiré de l'API mi-2026, remplacé
-# par Gemma 4. Vérifie les modèles disponibles pour ta clé avec :
-#   curl "https://generativelanguage.googleapis.com/v1beta/models?key=TA_CLE"
-GEMMA_MODEL = os.getenv("GEMMA_MODEL", "gemma-4-31b-it")
+# Nom du modèle Gemini à utiliser via l'API Gemini / Google AI Studio.
+# Accepte toujours l'ancienne variable GEMMA_MODEL par compatibilité
+# ascendante (si quelqu'un a un script/CI qui la définit encore).
+GEMINI_MODEL = os.getenv("GEMINI_MODEL") or os.getenv("GEMMA_MODEL", "gemini-3.6-flash")
 
 # Clé API Google AI Studio (https://aistudio.google.com/apikey).
 # Accepte aussi GEMINI_API_KEY par compatibilité avec le SDK google-genai.
@@ -25,4 +24,4 @@ OUTPUT_DIR = os.getenv("OUTPUT_DIR", "generated-k8s-templates")
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.2"))
 
 # Nombre max de tokens en sortie.
-MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "2048"))
+MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "8192"))
