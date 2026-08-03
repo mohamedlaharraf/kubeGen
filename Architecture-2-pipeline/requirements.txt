@@ -1,0 +1,16 @@
+langgraph>=0.2.0
+langchain-core>=0.3.0
+google-genai>=1.0.0
+pydantic>=2.7.0
+PyYAML>=6.0.1
+python-dotenv>=1.0.1
+rich>=13.7.0
+tenacity>=8.2.3
+
+# --- Dépendances OPTIONNELLES (binaires externes, pas des packages pip) ---
+# kubeconform : validation OpenAPI réelle (--kubeconform)
+#   https://github.com/yannh/kubeconform#installation
+# kubectl : dry-run-apply et vérification de CRD (--dry-run-apply, --check-cluster-deps)
+#   https://kubernetes.io/docs/tasks/tools/
+# Le pipeline fonctionne normalement sans ces deux binaires ; les options
+# correspondantes dégradent proprement avec un avertissement si absents.
