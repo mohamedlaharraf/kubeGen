@@ -9,8 +9,8 @@ suite de 10 exigences en langage naturel.
 | Architecture | Adaptateur | Statut |
 |---|---|---|
 | A - Agent unique | `adapters/architecture_a_single_agent.py` | ✅ branché |
-| B - Pipeline multi-agents | `adapters/architecture_b_pipeline.py` | ✅ branché (⚙️ chemin à configurer, voir ci-dessous) |
-| C - Orchestrateur + blackboard | — | ⏳ pas encore construit |
+| B - Pipeline multi-agents | `adapters/architecture_b_pipeline.py` | ✅ branché |
+| C - Orchestrateur + blackboard | `adapters/architecture_c_blackboard.py` | ✅ branché |
 | D - Orchestrateur + débat | — | ⏳ pas encore construit |
 
 ### Configurer l'architecture B
@@ -35,12 +35,6 @@ benchmark utilisera par défaut l'interpréteur Python du benchmark
 lui-même (probablement sans `langgraph`/`tenacity` installés, donc B
 échouera avec une erreur claire plutôt qu'un plantage silencieux).
 
-⚠️ **Cohérence du modèle** : à ce jour, `pipeline-kubegen` utilise
-toujours `GEMMA_MODEL=gemma-4-31b-it` (voir son `config.py`) alors que
-l'Architecture A a été basculée sur `gemini-2.5-flash`. Comparer A et B
-avec des modèles différents biaise le tableau de coût/latence -- si vous
-voulez une comparaison équitable, alignez aussi le modèle de
-pipeline-kubegen avant de lancer le benchmark complet.
 
 ## Lancer le benchmark
 
@@ -95,25 +89,6 @@ sudo mv kube-linter /usr/local/bin/
 ```
 
 Vérifiez avec `kube-linter version`.
-
-## Ajouter les architectures C, D
-
-1. Créer `benchmark/adapters/architecture_c_blackboard.py` (par ex.) avec
-   une classe héritant de `ArchitectureAdapter` (voir `adapters/base.py`) :
-   - `architecture_id` (ex: `"C_blackboard"`)
-   - `architecture_label` (ex: `"Architecture C - Orchestrateur + blackboard"`)
-   - `run(requirement, scenario_id, run_name) -> RunResult`, avec UN
-     `StepTelemetry` par agent/étape (pas juste un total global) pour
-     avoir la ventilation "latence par sous-agent" demandée par la tâche.
-2. L'enregistrer dans `ARCHITECTURE_REGISTRY` (`adapters/__init__.py`).
-3. Rien d'autre à modifier — scénarios, validateurs, scoring énergie,
-   pricing et génération du rapport sont déjà architecture-agnostiques.
-
-`adapters/architecture_b_pipeline.py` (invocation en sous-processus d'un
-projet séparé + lecture de son `execution_metrics.json`) et
-`adapters/architecture_a_single_agent.py` (import direct en mémoire)
-montrent les deux patterns d'intégration possibles selon que
-l'architecture vit dans ce repo ou dans un projet à part.
 
 ## Rubrique du score énergie
 

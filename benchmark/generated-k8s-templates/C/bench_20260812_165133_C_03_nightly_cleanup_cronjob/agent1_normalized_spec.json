@@ -1,0 +1,94 @@
+{
+  "architecture_type": "single",
+  "namespace": "ops",
+  "components": [
+    {
+      "component_name": "log-cleanup",
+      "workload_type": "CronJob",
+      "image": "myregistry/cleanup-tool:1.0",
+      "replicas": 1,
+      "labels": {
+        "app.kubernetes.io/name": "log-cleanup"
+      },
+      "ports": [],
+      "env_vars": [],
+      "volumes": [
+        {
+          "name": "shared-logs",
+          "mount_path": "/var/log/shared",
+          "kind": "pvc",
+          "source_name": "shared-logs",
+          "size": null,
+          "storage_class_name": null
+        }
+      ],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [
+        "Workload éphémère (CronJob) consommant des ressources exclusivement pendant la fenêtre d'exécution de la tâche"
+      ],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [
+        "Planification quotidienne à 03:00 (0 3 * * *)",
+        "Arrêt automatique si l'exécution dépasse 15 minutes (activeDeadlineSeconds: 900)",
+        "Nombre maximal de tentatives fixé à 2 en cas d'échec (backoffLimit: 2)",
+        "Purger les fichiers de log de plus de 30 jours présent sur le volume PVC shared-logs"
+      ],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": "0 3 * * *",
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "global_constraints": [],
+  "application_context": "",
+  "raw_user_request": "Crée une tâche planifiée \"log-cleanup\" (image myregistry/cleanup-tool:1.0,\nnamespace \"ops\") qui s'exécute tous les jours à 3h du matin pour purger\nles logs de plus de 30 jours sur un volume partagé \"shared-logs\" (PVC\nexistant, montage en lecture-écriture). Pas besoin de port réseau. La\ntâche doit s'arrêter automatiquement si elle dépasse 15 minutes\nd'exécution, et ne pas relancer plus de 2 tentatives en cas d'échec.",
+  "ambiguities": [
+    {
+      "field": "components[0].volumes[0].mount_path",
+      "question": "Quel est le répertoire exact de montage pour le volume shared-logs dans le conteneur ?",
+      "assumption_made": "Utilisation du répertoire par défaut /var/log/shared",
+      "confidence": "medium"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Création d'une tâche planifiée nommée log-cleanup",
+      "Utilisation de l'image myregistry/cleanup-tool:1.0",
+      "Namespace cible 'ops'",
+      "Planification quotidienne à 3h du matin",
+      "Purge des logs de plus de 30 jours",
+      "Montage du PVC existant 'shared-logs' en lecture-écriture",
+      "Aucun port réseau à exposer",
+      "Timeout automatique après 15 minutes d'exécution",
+      "Limite de 2 tentatives en cas d'échec"
+    ],
+    "requirements_mapped": [
+      "Création d'une tâche planifiée nommée log-cleanup",
+      "Utilisation de l'image myregistry/cleanup-tool:1.0",
+      "Namespace cible 'ops'",
+      "Planification quotidienne à 3h du matin",
+      "Purge des logs de plus de 30 jours",
+      "Montage du PVC existant 'shared-logs' en lecture-écriture",
+      "Aucun port réseau à exposer",
+      "Timeout automatique après 15 minutes d'exécution",
+      "Limite de 2 tentatives en cas d'échec"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 0,
+    "self_check_passed": true
+  }
+}

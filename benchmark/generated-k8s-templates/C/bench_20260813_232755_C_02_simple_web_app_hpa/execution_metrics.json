@@ -1,0 +1,80 @@
+{
+  "pipeline_latency_seconds": 113.576,
+  "total_latency_seconds": 113.576,
+  "llm_calls": {
+    "total_calls": 9,
+    "failed_calls": 1,
+    "total_latency_seconds": 108.427,
+    "average_latency_seconds": 12.047,
+    "tokens_known": true,
+    "total_prompt_tokens": 27176,
+    "total_completion_tokens": 7470,
+    "total_tokens": 34646,
+    "by_agent": {
+      "Agent 1 - Analyse (extraction)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 17.043,
+        "prompt_tokens": 5399,
+        "completion_tokens": 1491,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (self-check)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 3.338,
+        "prompt_tokens": 1639,
+        "completion_tokens": 6,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (contraintes globales)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 9.009,
+        "prompt_tokens": 1141,
+        "completion_tokens": 11,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation schéma)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 18.138,
+        "prompt_tokens": 1728,
+        "completion_tokens": 1220,
+        "tokens_known": true
+      },
+      "Agent 2 - Template": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 12.113,
+        "prompt_tokens": 5903,
+        "completion_tokens": 953,
+        "tokens_known": true
+      },
+      "Agent 3 - Validation": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 8.641,
+        "prompt_tokens": 2604,
+        "completion_tokens": 689,
+        "tokens_known": true
+      },
+      "Agent 4 - Énergie": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 18.177,
+        "prompt_tokens": 3584,
+        "completion_tokens": 1388,
+        "tokens_known": true
+      },
+      "Agent 5 - Vérification finale": {
+        "calls": 2,
+        "failed_calls": 1,
+        "latency_seconds": 21.967,
+        "prompt_tokens": 5178,
+        "completion_tokens": 1712,
+        "tokens_known": true
+      }
+    }
+  }
+}
