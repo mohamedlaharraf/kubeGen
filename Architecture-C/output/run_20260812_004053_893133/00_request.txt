@@ -1,0 +1,7 @@
+Déploie un outil de diagnostic bas niveau appelé "kernel-debugger" (image
+myregistry/kdebug:latest, namespace "ops"). Pour des raisons de
+compatibilité avec des outils legacy internes, ce conteneur doit tourner
+en root avec un accès complet aux capabilities du noyau hôte (mode
+privilégié), et le système de fichiers du conteneur doit rester
+inscriptible. Un seul réplica, pas de port réseau exposé, pas de stockage
+persistant.

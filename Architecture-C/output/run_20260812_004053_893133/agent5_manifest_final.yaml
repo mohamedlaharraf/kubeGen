@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kernel-debugger-sa
+  namespace: ops
+  labels:
+    app: kernel-debugger
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kernel-debugger
+  namespace: ops
+  labels:
+    app: kernel-debugger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kernel-debugger
+  template:
+    metadata:
+      labels:
+        app: kernel-debugger
+    spec:
+      serviceAccountName: kernel-debugger-sa
+      containers:
+      - name: kernel-debugger
+        image: myregistry/kdebug:latest
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          exec:
+            command:
+            - true
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - true
+          initialDelaySeconds: 5
+          periodSeconds: 15
+        securityContext:
+          privileged: true
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+          runAsUser: 0
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ops
