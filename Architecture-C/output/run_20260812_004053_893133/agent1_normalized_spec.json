@@ -1,0 +1,82 @@
+{
+  "architecture_type": "single",
+  "namespace": "ops",
+  "components": [
+    {
+      "component_name": "kernel-debugger",
+      "workload_type": "Deployment",
+      "image": "myregistry/kdebug:latest",
+      "replicas": 1,
+      "labels": {
+        "app": "kernel-debugger"
+      },
+      "ports": [],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [
+        "Exécution du conteneur en root requise pour compatibilité avec outils legacy internes",
+        "Mode privilégié (privileged: true) avec accès complet aux capabilities du noyau hôte",
+        "Système de fichiers du conteneur inscriptible (readOnlyRootFilesystem: false)"
+      ],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "global_constraints": [],
+  "application_context": "",
+  "raw_user_request": "Déploie un outil de diagnostic bas niveau appelé \"kernel-debugger\" (image myregistry/kdebug:latest, namespace \"ops\"). Pour des raisons de compatibilité avec des outils legacy internes, ce conteneur doit tourner en root avec un accès complet aux capabilities du noyau hôte (mode privilégié), et le système de fichiers du conteneur doit rester inscriptible. Un seul réplica, pas de port réseau exposé, pas de stockage persistant.",
+  "ambiguities": [
+    {
+      "field": "components[0].workload_type",
+      "question": "S'agit-il d'un Deployment long-running ou d'un Job/DaemonSet de diagnostic ?",
+      "assumption_made": "Déploiement sous forme de Deployment à 1 réplica tel que demandé.",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déployer un outil de diagnostic bas niveau nommé kernel-debugger",
+      "Utiliser l'image myregistry/kdebug:latest",
+      "Déployer dans le namespace ops",
+      "Exécuter le conteneur en root pour compatibilité outils legacy",
+      "Accès complet aux capabilities du noyau hôte (mode privilégié)",
+      "Système de fichiers du conteneur inscriptible",
+      "Exécuter un seul réplica",
+      "Aucun port réseau exposé",
+      "Aucun stockage persistant"
+    ],
+    "requirements_mapped": [
+      "Déployer un outil de diagnostic bas niveau nommé kernel-debugger",
+      "Utiliser l'image myregistry/kdebug:latest",
+      "Déployer dans le namespace ops",
+      "Exécuter le conteneur en root pour compatibilité outils legacy",
+      "Accès complet aux capabilities du noyau hôte (mode privilégié)",
+      "Système de fichiers du conteneur inscriptible",
+      "Exécuter un seul réplica",
+      "Aucun port réseau exposé",
+      "Aucun stockage persistant"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 0,
+    "self_check_passed": true
+  }
+}

@@ -1,0 +1,19 @@
+Tu es toujours l'AGENT 1, dans une passe de RÉPARATION.
+
+On te donne le JSON structuré (NormalizedSpec) actuel et une liste de
+"gaps" (exigences manquantes) détectés par ta propre relecture.
+
+TA TÂCHE : renvoyer une version CORRIGÉE et COMPLÈTE du même JSON
+NormalizedSpec, qui intègre ces exigences manquantes dans les bons
+champs (et met à jour `coverage.requirements_mapped` /
+`coverage.requirements_unmapped` en conséquence). Ne supprime aucune
+information déjà présente et correcte.
+
+Pour chaque gap : s'il correspond réellement à un champ existant du
+schéma, intègre-le dedans. S'il ne correspond à AUCUN champ existant,
+même approximativement, NE LE FORCE PAS dans un champ voisin — ajoute-le
+dans `unmapped_requirements` (avec `suggested_kind` si tu as une
+hypothèse). Une fausse correspondance est pire qu'un champ vide.
+
+Réponds UNIQUEMENT avec le JSON complet, sans texte d'accompagnement,
+sans balises markdown.
