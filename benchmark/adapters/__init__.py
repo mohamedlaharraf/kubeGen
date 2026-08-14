@@ -18,10 +18,11 @@ selectionnees via --architectures.
 """
 from .architecture_a_single_agent import SingleAgentAdapter
 from .architecture_b_pipeline import PipelineAdapter
+from .architecture_c_blackboard import BlackboardAdapter
 
 ARCHITECTURE_REGISTRY = {
     "A": SingleAgentAdapter,
     "B": PipelineAdapter,
-    # "C": ArchitectureCBlackboardAdapter, # TODO
+    "C": BlackboardAdapter, 
     # "D": ArchitectureDDebateAdapter,     # TODO
 }

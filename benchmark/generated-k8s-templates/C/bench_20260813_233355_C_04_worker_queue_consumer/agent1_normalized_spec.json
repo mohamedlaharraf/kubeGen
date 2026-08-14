@@ -1,0 +1,90 @@
+{
+  "architecture_type": "single",
+  "namespace": "media",
+  "components": [
+    {
+      "component_name": "image-resizer",
+      "workload_type": "Deployment",
+      "image": "myregistry/resizer:3.2",
+      "replicas": 0,
+      "labels": {
+        "app": "image-resizer"
+      },
+      "ports": [],
+      "env_vars": [
+        {
+          "name": "RABBITMQ_HOST",
+          "value": null,
+          "from_secret": null,
+          "from_configmap": "rabbitmq-config",
+          "secret_key": null,
+          "configmap_key": "host"
+        }
+      ],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [
+        "Scale-to-zero (0 réplica) au repos pour annuler la consommation énergétique quand la file est vide",
+        "Autoscaling jusqu'à 10 réplicas pour absorber les pics de charge efficacement"
+      ],
+      "resource_hints": "Autoscaling basé sur KEDA déclenché par le nombre de messages dans la queue RabbitMQ 'resize-queue' (plage : 0 à 10 réplicas)",
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "Configuration de l'autoscaler KEDA (ScaledObject) ciblant la file RabbitMQ 'resize-queue' avec minReplicaCount: 0 et maxReplicaCount: 10",
+      "suggested_kind": "ScaledObject"
+    }
+  ],
+  "global_constraints": [],
+  "application_context": "Worker de traitement d'images asynchrone à charge variable. N'exécute pas de service web long-running, tolère le scale-to-zero complet au repos et nécessite un scaling réactif jusqu'à 10 réplicas en pic.",
+  "raw_user_request": "Déploie un worker Python \"image-resizer\" (image myregistry/resizer:3.2,\nnamespace \"media\") qui consomme des messages depuis une file RabbitMQ\n(\"resize-queue\", hôte à lire depuis le ConfigMap \"rabbitmq-config\", clé\n\"host\"). Pas de port HTTP exposé. Je veux qu'il scale automatiquement\nen fonction du nombre de messages en attente dans la file (KEDA), de 0\nau repos jusqu'à 10 réplicas maximum en pic de charge, pour économiser\nun maximum de ressources quand la file est vide. Pas de stockage\npersistant nécessaire.",
+  "ambiguities": [
+    {
+      "field": "components[0].env_vars[0].name",
+      "question": "Quel est le nom exact de la variable d'environnement attendue par le conteneur pour l'hôte RabbitMQ ?",
+      "assumption_made": "Nommée 'RABBITMQ_HOST' par convention standard.",
+      "confidence": "medium"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déployer un worker Python nommé 'image-resizer' avec l'image 'myregistry/resizer:3.2' dans le namespace 'media'",
+      "Pas de port HTTP exposé",
+      "Lire l'hôte RabbitMQ depuis la clé 'host' du ConfigMap 'rabbitmq-config'",
+      "Autoscaling via KEDA basé sur les messages de la file 'resize-queue' (0 à 10 réplicas)",
+      "Économie maximale d'énergie au repos (scale to zero quand la file est vide)",
+      "Pas de stockage persistant nécessaire"
+    ],
+    "requirements_mapped": [
+      "Déployer un worker Python nommé 'image-resizer' avec l'image 'myregistry/resizer:3.2' dans le namespace 'media'",
+      "Pas de port HTTP exposé",
+      "Lire l'hôte RabbitMQ depuis la clé 'host' du ConfigMap 'rabbitmq-config'",
+      "Économie maximale d'énergie au repos (scale to zero quand la file est vide)",
+      "Pas de stockage persistant nécessaire"
+    ],
+    "requirements_unmapped": [
+      "Autoscaling via KEDA basé sur les messages de la file 'resize-queue' (0 à 10 réplicas)"
+    ],
+    "repair_attempts": 0,
+    "self_check_passed": true
+  }
+}

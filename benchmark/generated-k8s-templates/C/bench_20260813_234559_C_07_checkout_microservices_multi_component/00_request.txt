@@ -1,0 +1,24 @@
+Déploie une architecture microservices pour un système de paiement, dans le namespace "payments" :
+
+1. Un service "checkout-api" (Node.js, image myregistry/checkout:2.0) :
+   - 3 réplicas, port 8080 exposé en HTTP.
+   - Variable d'environnement NODE_ENV=production, et DB_PASSWORD à lire
+     depuis le secret "checkout-db-secret" (clé "password").
+   - Exposée à l'extérieur du cluster via le domaine checkout.exemple.com,
+     avec TLS.
+   - Doit pouvoir lister les ConfigMaps du namespace via l'API Kubernetes.
+   - Sidecar Envoy pour le service mesh.
+   - Trafic très faible la nuit (minuit à 6h), très élevé entre 9h et midi :
+     scale automatiquement, minimum 2 réplicas, maximum 8.
+   - Sécurité primordiale, exposée en interne uniquement pour tout le reste
+     (seul le port 8080 est public via l'Ingress).
+   - Ajoute des métriques Prometheus sur le port 9091.
+   - Dépend du service "checkout-api" -> "order-worker".
+
+2. Un service "order-worker" (Python, image myregistry/worker:1.5) :
+   - 2 réplicas, pas de port exposé (juste un worker asynchrone).
+   - Variable d'environnement QUEUE_URL à lire depuis le ConfigMap
+     "worker-config".
+   - Pas de stockage persistant nécessaire.
+
+Le tout dans un cluster de test unique (pas de multi-cluster nécessaire).

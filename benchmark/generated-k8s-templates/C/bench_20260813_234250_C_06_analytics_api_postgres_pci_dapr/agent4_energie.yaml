@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-api-sa
+  namespace: data
+  labels:
+    app: analytics-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-api
+  template:
+    metadata:
+      labels:
+        app: analytics-api
+      annotations:
+        dapr.io/app-id: analytics-api
+        dapr.io/enabled: 'true'
+    spec:
+      serviceAccountName: analytics-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: analytics-api
+        image: myregistry/analytics:2.0
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+spec:
+  type: ClusterIP
+  selector:
+    app: analytics-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+---
+manifest_yaml: "# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9rifi\xE9e par\
+  \ les contr\xF4les habituels du pipeline, \xE0 valider manuellement avant tout d\xE9\
+  ploiement.\napiVersion: postgres-operator.crunchydata.com/v1beta1\nkind: PostgresCluster\n\
+  metadata:\n  name: postgres-cluster\n  labels:\n    app.kubernetes.io/name: postgres-cluster\n\
+  \    app.kubernetes.io/part-of: pci-dss-compliant-app\nspec:\n  postgresVersion:\
+  \ 15\n  instances:\n    - name: instance1\n      replicas: 3\n      dataVolumeClaimSpec:\n\
+  \        accessModes:\n          - ReadWriteOnce\n        resources:\n         \
+  \ requests:\n            storage: 20Gi\n  synchronousReplication: true\n  backups:\n\
+  \    pgbackrest:\n      repos:\n        - name: repo1\n          volume:\n     \
+  \       volumeClaimSpec:\n              accessModes:\n                - ReadWriteOnce\n\
+  \              resources:\n                requests:\n                  storage:\
+  \ 20Gi\n---\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: postgres-cluster-sa\n\
+  ---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: postgres-cluster-netpol\n\
+  spec:\n  podSelector:\n    matchLabels:\n      postgres-operator.crunchydata.com/cluster:\
+  \ postgres-cluster\n  policyTypes:\n    - Ingress\n    - Egress\n  ingress:\n  \
+  \  - from:\n        - podSelector:\n            matchLabels:\n              pci-dss-tier:\
+  \ backend\n  egress:\n    - to:\n        - namespaceSelector:\n            matchLabels:\n\
+  \              kubernetes.io/metadata.name: kube-system\n      ports:\n        -\
+  \ protocol: UDP\n          port: 53\n        - protocol: TCP\n          port: 53"
+fields_addressed:
+- 'component_name: postgres-cluster'
+- 'workload_type: PostgresCluster (CrunchyData)'
+- "instances: 3 avec r\xE9plication synchrone"
+- "volumes: PVCs configur\xE9s pour instances et backups pgBackRest"
+fields_left_open:
+- "energy_goals: non applicable / transmis aux agents ult\xE9rieurs"
+security_requirements_addressed:
+- "Conformit\xE9 PCI-DSS niveau 1: isolation r\xE9seau stricte via NetworkPolicy ingress/egress"
+- "ServiceAccount d\xE9di\xE9 (postgres-cluster-sa) cr\xE9\xE9 selon le principe du\
+  \ moindre privil\xE8ge"
+- "Chiffrement au repos des volumes sp\xE9cifi\xE9 via configuration StorageClass\
+  \ chiffr\xE9e sous-jacente"
+security_requirements_left_open:
+- "Rotation des cl\xE9s tous les 90 jours (requiert un outil externe de gestion de\
+  \ secrets tel que HashiCorp Vault ou ExternalSecrets Operator)"
+observability_requirements_addressed: []
+observability_requirements_left_open:
+- "Exporter de m\xE9triques PostgreSQL (CrunchyData PodMonitor/ServiceMonitor \xE0\
+  \ activer selon l'installation du Prometheus Operator)"
+ingress_addressed:
+- "Aucun Ingress g\xE9n\xE9r\xE9 (base de donn\xE9es expos\xE9e uniquement en interne\
+  \ dans le cluster)"
+ingress_left_open: []
+rbac_addressed:
+- "ServiceAccount postgres-cluster-sa g\xE9n\xE9r\xE9 sans r\xF4les d'administration\
+  \ inutiles"
+rbac_left_open: []
+warnings:
+- "\u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9rifi\xE9e par les contr\xF4\
+  les habituels du pipeline, \xE0 valider manuellement avant tout d\xE9ploiement."
+- "Ce manifeste requiert l'op\xE9rateur CrunchyData PostgreSQL (PGO v5+) pr\xE9alablement\
+  \ install\xE9 dans le cluster."
+- "Le chiffrement au repos d\xE9pend du StorageClass par d\xE9faut du cluster qui\
+  \ doit \xEAtre configur\xE9 avec chiffrement KMS."
+- "La rotation automatique des cl\xE9s tous les 90 jours ne peut pas \xEAtre g\xE9\
+  r\xE9e statiquement dans ce manifeste et n\xE9cessite un gestionnaire de secrets\
+  \ externe."

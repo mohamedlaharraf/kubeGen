@@ -1,0 +1,4 @@
+Déploie un site web statique appelé "landing-page" (image nginx:1.27,
+namespace "web"), servi sur le port 80. Un seul réplica suffit, pas de
+base de données ni de stockage persistant. Accessible depuis internet
+via le domaine "www.exemple.com", sans TLS pour l'instant.
