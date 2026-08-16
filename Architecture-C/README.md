@@ -73,6 +73,28 @@ distinct du problème :**
    contexte borné : on ne donne jamais le texte brut ni la spec entière à
    ces agents, seulement les quelques contraintes pertinentes.
 
+   ⚠️ **Cette extraction a ÉCHOUÉ une première fois en production** —
+   testée avec un vrai LLM sur le scénario PCI-DSS/PostgresCluster, la
+   contrainte "chiffrement au repos pour tous les volumes" a été rattachée
+   au seul composant applicatif visible, exactement comme sur
+   l'Architecture B, malgré l'instruction dans le prompt principal.
+   Correction à deux niveaux (`agents/agent1_analyse.py`) :
+   - **Appel LLM dédié** (`prompts/agent1_global_constraints_system.txt`) :
+     une seule responsabilité au lieu d'être noyée parmi 7 instructions
+     dans le prompt d'extraction principal, fusionné avec ce que
+     l'extraction principale trouve.
+   - **Filet de sécurité déterministe** (`_keyword_hits`) : si des indices
+     lexicaux de contrainte transversale (chiffrement, PCI-DSS, RGPD,
+     "tous les volumes"...) apparaissent dans le texte brut mais
+     n'apparaissent dans AUCUNE contrainte extraite, une deuxième
+     tentative dédiée est déclenchée avec l'indice explicite. Si ça
+     échoue encore, c'est signalé bruyamment dans
+     `coverage.requirements_unmapped` (`[EXTRACTION POTENTIELLEMENT
+     MANQUÉE]`) plutôt que de disparaître silencieusement.
+   Testé avec des mocks reproduisant exactement le bug observé (voir
+   `tests/test_global_constraints_extraction.py`), pas encore revérifié
+   avec un vrai appel API après cette correction.
+
 2. **Boucle Generator <-> Validator (`ValidationError`)** : Agent 3
    distingue maintenant les problèmes MÉCANIQUES (qu'il corrige lui-même,
    comme avant) des problèmes de FOND — sécurité manquante, violation de
@@ -398,9 +420,12 @@ python main.py --interactive "Déploie une API de paiement..."
 
 Exécute l'Agent 1 seul en amont ; s'il a des ambiguïtés non résolues
 (`spec.ambiguities` non vide), pose une question ciblée par ambiguïté
-avant de lancer le pipeline complet (5 agents, toujours strictement
-séquentiel — le graphe lui-même ne boucle jamais). Si aucune clarification
-n'est apportée, les hypothèses initiales de l'Agent 1 sont conservées.
+avant de lancer le pipeline complet (5 agents, avec ses deux cycles
+bornés habituels — voir plus haut). Ce mode ne modifie rien à la
+structure du graphe : il choisit juste, en amont, d'attendre une
+clarification plutôt que de lancer un run complet sur une hypothèse
+incertaine. Si aucune clarification n'est apportée, les hypothèses
+initiales de l'Agent 1 sont conservées.
 
 ## Dimensionnement basé sur des métriques réelles (`--metrics-source`)
 
@@ -478,7 +503,10 @@ multiples/dépendances circulaires, et les nouveaux modules déterministes
 pipeline-kubegen/
 ├── main.py                     # CLI (+ --interactive, --kubeconform, --dry-run-apply,
 │                                #   --check-cluster-deps, --metrics-source, --cost-estimate)
-├── graph.py                     # Assemblage LangGraph (chaîne stricte)
+├── graph.py                     # Point d'entrée de compatibilité, délègue à orchestrator.py
+├── orchestrator.py               # Classe Orchestrator : construction du graphe (noeuds,
+│                                  #   arêtes, les 2 cycles bornés) + décisions de routage
+│                                  #   (route_after_generation_validation, route_after_final_verification)
 ├── schemas.py                    # NormalizedSpec, ServiceComponent, PipelineState...
 ├── config.py                     # Lecture .env
 ├── llm_client.py                  # Appel Gemma via Google AI Studio
@@ -502,7 +530,7 @@ pipeline-kubegen/
 │   ├── llm_metrics.py                          # Latence/appels/tokens (collecteur global)
 │   └── logging_utils.py                         # Affichage console (rich)
 ├── examples/example_request.txt
-└── tests/                                       # Tests, LLM/subprocess/input mockés
+└── tests/                                       # 89 tests, LLM/subprocess/input mockés
 ```
 
 ## Métriques d'exécution (latence, appels LLM, tokens)
@@ -601,6 +629,78 @@ Trois niveaux de correction, dans `agents/agent1_analyse.py` et `schemas.py` :
    hasard, le run échoue proprement dans ce cas plutôt que de deviner.
 
 Testé par reproduction fidèle du bug exact observé (`tests/test_agent1_schema_recovery.py`).
+
+### Deux autres bugs réels trouvés en creusant plus loin
+
+**Le bloc best-effort pouvait disparaître à l'étape suivante.** L'Agent 3
+régénère tout le YAML via un appel LLM — rien ne garantissait qu'il
+préserve le bloc best-effort de l'Agent 2 en le jugeant "hors sujet" lors
+de sa réécriture. Corrigé par `_split_off_unmapped_block()` dans
+`agents/agent3_validation.py` : le bloc est isolé AVANT l'appel LLM
+(l'Agent 3 ne le voit donc jamais, ne peut pas le juger inutile) et
+réinjecté APRÈS, par code, quoi qu'ait fait le LLM entre-temps. Testé en
+simulant explicitement un LLM qui "oublie" le bloc
+(`tests/test_agent3_unmapped_isolation.py`).
+
+**Les sidecars à injection automatique (Dapr, Istio, Linkerd...) étaient
+mal générés**, pas par manque d'isolation de contexte mais par manque de
+connaissance métier dans le prompt : `sidecars` est bien un champ
+structuré, l'Agent 2 reçoit toute l'info nécessaire, mais le prompt
+traitait tout sidecar de façon générique ("conteneur additionnel dans le
+Pod"), alors que Dapr/Istio/Linkerd fonctionnent par injection automatique
+via annotations, pas par déclaration manuelle d'un conteneur. Corrigé dans
+`prompts/agent2_system.txt` : ces systèmes reconnus utilisent maintenant
+leur convention d'injection propre (ex: `dapr.io/enabled: "true"` sur les
+annotations du pod) plutôt qu'un conteneur manuel dans `containers[]`.
+
+Un troisième correctif, plus délicat (faire connaître au fragment
+best-effort les exigences de sécurité/dépendances du composant connu
+associé), a été délibérément laissé de côté pour l'instant : plus on ouvre
+le contexte transmis à la génération best-effort, plus on se rapproche du
+risque qu'on cherche justement à éviter — un LLM avec plus de surface pour
+halluciner des connexions inventées entre composants. À tester séparément
+si le besoin se confirme, pour pouvoir attribuer clairement l'effet de ce
+changement précis plutôt que de le mélanger avec d'autres.
+
+Limite honnête, assumée : ces fragments passent par `kubeconform`
+(validation syntaxique générique, fonctionne pour n'importe quel `kind`)
+mais PAS par les cross-vérifications spécifiques (`check_httproute_cross_references`
+et consorts), qui ne peuvent exister que pour des types anticipés à
+l'avance. C'est la différence assumée entre "universel et fiable partout"
+(impossible) et "capable de tenter n'importe quoi, honnête sur ce qui a
+été vraiment vérifié" (atteignable).
+
+### Deux bugs supplémentaires trouvés sur des runs réels (Architecture C)
+
+**La réparation ciblée pouvait faire disparaître un champ sans que rien ne
+le signale.** Le noeud `agents/agent_repair.py` remplaçait le document
+corrigé EN ENTIER (`docs[idx] = corrected`) — si le LLM de réparation,
+en reconstruisant le JSON, omettait par inadvertance un champ sans
+rapport avec le correctif demandé (observé : une réparation qui rétablit
+`privileged`/`runAsUser` a fait disparaître `readOnlyRootFilesystem` au
+passage), rien ne l'attrapait. Corrigé par `_merge_preserving_missing_fields()` :
+fusion déterministe qui restaure toute clé absente du document corrigé
+mais présente dans l'original (récursif sur les dicts ET sur les listes
+d'objets nommés — containers, volumes — appariés par `name`), tout en
+préservant les modifications volontaires. Chaque restauration est
+journalisée (`⚠️ N champ(s) restauré(s) automatiquement...`), jamais
+silencieuse. Testé en rejouant exactement le bug observé
+(`tests/test_repair_field_preservation.py`).
+
+**Agent 3 pouvait contredire une exigence de sécurité explicitement
+demandée.** Un scénario légitime ("outil de diagnostic bas niveau,
+doit tourner en mode privilégié pour des raisons documentées") a vu
+Agent 3 flaguer `privileged`/`root` comme `validation_error` générique,
+déclenchant une correction qui désactivait ces flags — avant que la
+boucle de réparation (Agent 5) ne les rétablisse, les deux mécanismes se
+contredisant faute de contexte partagé. Corrigé à deux niveaux
+(`agents/agent3_validation.py`) : Agent 3 reçoit maintenant
+`security_requirements` du composant et une instruction explicite de
+vérifier une posture de sécurité contre ce champ avant de la flaguer ;
+un filet déterministe (`_explicitly_requested()`) filtre après coup
+toute `validation_error` qui contredirait une exigence explicite, même
+si le LLM ignore l'instruction. Testé avec le scénario exact observé
+(`tests/test_agent3_security_requirements_guard.py`).
 
 ## Gateway API, cert-manager, StatefulSet natif, multi-cluster
 
