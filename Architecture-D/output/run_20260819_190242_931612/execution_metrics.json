@@ -1,0 +1,144 @@
+{
+  "pipeline_latency_seconds": 261.384,
+  "total_latency_seconds": 261.384,
+  "llm_calls": {
+    "total_calls": 20,
+    "failed_calls": 3,
+    "total_latency_seconds": 384.502,
+    "average_latency_seconds": 19.225,
+    "tokens_known": true,
+    "total_prompt_tokens": 54532,
+    "total_completion_tokens": 14139,
+    "total_tokens": 68671,
+    "by_agent": {
+      "Agent 1 - Analyse (extraction)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 21.632,
+        "prompt_tokens": 5332,
+        "completion_tokens": 1036,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (self-check)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 7.169,
+        "prompt_tokens": 1199,
+        "completion_tokens": 6,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (contraintes globales)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 5.321,
+        "prompt_tokens": 1074,
+        "completion_tokens": 78,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation schéma)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 23.945,
+        "prompt_tokens": 1398,
+        "completion_tokens": 888,
+        "tokens_known": true
+      },
+      "Agent 2 - Template": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 14.001,
+        "prompt_tokens": 5940,
+        "completion_tokens": 1134,
+        "tokens_known": true
+      },
+      "Agent 2 - Template (best-effort)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 13.482,
+        "prompt_tokens": 5925,
+        "completion_tokens": 548,
+        "tokens_known": true
+      },
+      "Agent 3 - Validation": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 30.9,
+        "prompt_tokens": 5161,
+        "completion_tokens": 1597,
+        "tokens_known": true
+      },
+      "Agent 2 - Correction sur retour": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 21.854,
+        "prompt_tokens": 1057,
+        "completion_tokens": 574,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation": {
+        "calls": 2,
+        "failed_calls": 1,
+        "latency_seconds": 21.332,
+        "prompt_tokens": 1679,
+        "completion_tokens": 926,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 17.679,
+        "prompt_tokens": 1708,
+        "completion_tokens": 1054,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 30.957,
+        "prompt_tokens": 2072,
+        "completion_tokens": 656,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 34.69,
+        "prompt_tokens": 3829,
+        "completion_tokens": 1206,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing-Critique": {
+        "calls": 2,
+        "failed_calls": 1,
+        "latency_seconds": 52.452,
+        "prompt_tokens": 3858,
+        "completion_tokens": 1140,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling-Critique": {
+        "calls": 2,
+        "failed_calls": 1,
+        "latency_seconds": 56.459,
+        "prompt_tokens": 4222,
+        "completion_tokens": 752,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Judge": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 15.148,
+        "prompt_tokens": 4277,
+        "completion_tokens": 1207,
+        "tokens_known": true
+      },
+      "Agent 5 - Vérification finale": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 17.48,
+        "prompt_tokens": 5801,
+        "completion_tokens": 1337,
+        "tokens_known": true
+      }
+    }
+  }
+}

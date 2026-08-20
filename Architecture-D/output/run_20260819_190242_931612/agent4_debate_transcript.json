@@ -1,0 +1,127 @@
+{
+  "transcripts": {
+    "search-api": [
+      {
+        "round_number": 1,
+        "proposals": [
+          {
+            "strategy": "consolidation",
+            "component_name": "search-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n      annotations:\n        vault.hashicorp.com/agent-inject: 'true'\n        vault.hashicorp.com/role: search-api\n    spec:\n      serviceAccountName: search-api-sa\n      nodeSelector:\n        nodepool: shared\n      affinity:\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            podAffinityTerm:\n              labelSelector:\n                matchExpressions:\n                - key: app\n                  operator: In\n                  values:\n                  - search-api\n              topologyKey: kubernetes.io/hostname\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n        resources:\n          requests:\n            cpu: 100m\n            memory: 128Mi\n          limits:\n            cpu: 500m\n            memory: 512Mi\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        volumeMounts:\n        - name: vault-secrets\n          mountPath: /vault/secrets\n      volumes:\n      - name: vault-secrets\n        emptyDir: {}\n",
+            "rationale": "Maintien du nodeSelector vers le pool partagé et de la podAffinity préférentielle pour maximiser la densité d'occupation des nœuds du cluster. Intégration des sondes de santé proposées par la stratégie Sizing pour éviter les pods zombies inutiles, tout en conservant des requests ajustées au plus près pour libérer de l'espace d'allocation scheduler.",
+            "estimated_energy_savings_pct": 20.0,
+            "performance_risk": "low",
+            "actions": [
+              "Orienté les pods vers un pool de nœuds partagé (nodepool: shared)",
+              "Appliqué une podAffinity préférentielle pour regrouper les réplicas sur les mêmes hôtes",
+              "Intégré les livenessProbe et readinessProbe proposées par la Stratégie Sizing",
+              "Maintenu des requests réalistes (100m/128Mi) évitant la sur-réservation de ressources"
+            ],
+            "warnings": [
+              "Le label 'nodepool: shared' est générique et doit correspondre à la topologie réelle du cluster."
+            ]
+          },
+          {
+            "strategy": "sizing",
+            "component_name": "search-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n      annotations:\n        vault.hashicorp.com/agent-inject: 'true'\n        vault.hashicorp.com/role: search-api\n    spec:\n      serviceAccountName: search-api-sa\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        resources:\n          requests:\n            cpu: 150m\n            memory: 256Mi\n          limits:\n            cpu: 300m\n            memory: 384Mi\n        volumeMounts:\n        - name: vault-secrets\n          mountPath: /vault/secrets\n      volumes:\n      - name: vault-secrets\n        emptyDir: {}",
+            "rationale": "Proposition de profilage maintenue : calibrage serré des requests (150m CPU / 256Mi RAM) fondé sur la charge d'une API de recherche légère interagissant avec Vault et Elasticsearch. Ratios limits/requests modérés (2x CPU, 1.5x RAM) pour éviter l'allocation fantôme tout en évitant le throttling ou l'OOMKill. Maintien des sondes tcpSocket légères pour éviter des redémarrages inutiles.",
+            "estimated_energy_savings_pct": 20.0,
+            "performance_risk": "low",
+            "actions": [
+              "Calibrage serré des requests CPU à 150m et mémoire à 256Mi",
+              "Encadrement strict des limites à 300m CPU (ratio 2x) et 384Mi mémoire (ratio 1.5x)",
+              "Mise en place de sondes liveness et readiness tcpSocket sur le port 8080"
+            ],
+            "warnings": [
+              "Surveiller les métriques réelles en production (p95 CPU/RAM) lors de pics de recherche Elasticsearch pour ajuster les requests si besoin."
+            ]
+          },
+          {
+            "strategy": "autoscaling",
+            "component_name": "search-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n      annotations:\n        vault.hashicorp.com/agent-inject: 'true'\n        vault.hashicorp.com/role: search-api\n    spec:\n      serviceAccountName: search-api-sa\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        volumeMounts:\n        - name: vault-secrets\n          mountPath: /vault/secrets\n      volumes:\n      - name: vault-secrets\n        emptyDir: {}",
+            "rationale": "Aucune fenêtre de trafic ('traffic_windows') ni objectif énergétique ('energy_goals') n'est configuré, et le contexte applicatif indique un trafic standard sans variation dynamique. Conformément à la règle 3, l'ajout d'un HPA ou ScaledObject non justifié créerait une complexité inutile et consommerait des ressources de la boucle de contrôle sans gain énergétique. Les 2 réplicas statiques sont maintenus.",
+            "estimated_energy_savings_pct": null,
+            "performance_risk": "low",
+            "actions": [
+              "Maintien du nombre de réplicas statique à 2 sans ajout de HPA/ScaledObject superflus."
+            ],
+            "warnings": []
+          }
+        ],
+        "critiques": [
+          {
+            "from_strategy": "consolidation",
+            "target_strategy": "sizing",
+            "component_name": "search-api",
+            "comment": "La stratégie Sizing fait abstraction totale des contraintes de placement, risquant l'éparpillement des pods sur des nœuds distincts sous-utilisés. De plus, remonter les requests à 150m/256Mi augmente la réservation théorique et freine la densité d'empilement. En revanche, l'ajout de l'ivenessProbe et readinessProbe est une très bonne pratique sanitaire que nous intégrons.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "consolidation",
+            "target_strategy": "autoscaling",
+            "component_name": "search-api",
+            "comment": "D'accord sur l'absence d'HPA/KEDA inutile qui consommerait de l'énergie pour la boucle de contrôle alors que le trafic est stable. Toutefois, l'absence de nodeSelector/podAffinity laisse la planification des 2 réplicas totalement libre, ce qui s'oppose à la compaction des nœuds.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "sizing",
+            "target_strategy": "consolidation",
+            "component_name": "search-api",
+            "comment": "La stratégie de consolidation sous-dimensionne les requests (100m CPU / 128Mi RAM) tout en accordant des limites trop larges (500m CPU / 512Mi RAM, soit des ratios de 5x et 4x). Ce sur-engagement agressif expose les pods à un throttling massif et à des OOMKills imprévisibles sur des nœuds compactés. De plus, l'absence de sondes de santé risque de générer des boucles de redémarrage coûteuses.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "sizing",
+            "target_strategy": "autoscaling",
+            "component_name": "search-api",
+            "comment": "D'accord avec l'analyse d'autoscaling : conserver 2 réplicas fixes sans ajouter d'objet HPA/KEDA est la bonne décision en l'absence de fenêtres de trafic dynamiques. Cependant, le manifeste d'autoscaling omet totalement le bloc de ressources et les sondes de santé.",
+            "agrees": true
+          },
+          {
+            "from_strategy": "autoscaling",
+            "target_strategy": "consolidation",
+            "component_name": "search-api",
+            "comment": "Aucun conflit concret avec la stratégie d'autoscaling. L'ajout d'affinités de placement et de sélection de nœud reste compatible avec la décision de conserver 2 réplicas statiques.",
+            "agrees": true
+          },
+          {
+            "from_strategy": "autoscaling",
+            "target_strategy": "sizing",
+            "component_name": "search-api",
+            "comment": "Aucun conflit concret. L'Ajustement des ressources et l'ajout de sondes de santé ne remettent pas en cause la gestion des réplicas et améliorent la fiabilité globale sans impacter l'autoscaling.",
+            "agrees": true
+          }
+        ]
+      }
+    ]
+  },
+  "judge_verdicts": [
+    {
+      "component_name": "search-api",
+      "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n      annotations:\n        vault.hashicorp.com/agent-inject: 'true'\n        vault.hashicorp.com/role: search-api\n    spec:\n      serviceAccountName: search-api-sa\n      nodeSelector:\n        nodepool: shared\n      affinity:\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            podAffinityTerm:\n              labelSelector:\n                matchExpressions:\n                - key: app\n                  operator: In\n                  values:\n                  - search-api\n              topologyKey: kubernetes.io/hostname\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        resources:\n          requests:\n            cpu: 150m\n            memory: 256Mi\n          limits:\n            cpu: 300m\n            memory: 384Mi\n        volumeMounts:\n        - name: vault-secrets\n          mountPath: /vault/secrets\n      volumes:\n      - name: vault-secrets\n        emptyDir: {}\n",
+      "reasoning": "La fusion combine les éléments complémentaires des trois stratégies tout en tranchant le seul conflit réel concernant la définition des ressources. 1) Sizing vs Consolidation sur le bloc 'resources': Consolidation proposait un sur-engagement agressif (100m CPU / 128Mi RAM en requests, ratios de 5x et 4x avec les limits), ce qui présente un risque de performance (throttling CPU et OOMKills) pour une API de recherche interagissant avec Elasticsearch et Vault. La proposition de Sizing (150m/256Mi requests, 300m/384Mi limits) a été retenue car elle assure la stabilité applicative avec un risque SLA quasi nul pour une économie d'énergie équivalente (20%). 2) Placement: La proposition de Consolidation (nodeSelector nodepool: shared + podAffinity préférentielle) a été retenue car elle permet de compacter les workloads sur le même pool de nœuds sans perturber le fonctionnement de l'application. 3) Autoscaling: Conformément aux avis convergents de Sizing et Autoscaling, aucun HPA/ScaledObject n'a été ajouté en l'absence de métriques/variations de trafic dynamiques, évitant ainsi la surcharge inutile de la boucle de contrôle K8s. 4) Probes: Les sondes liveness/readiness via tcpSocket proposées conjointement par Sizing et Consolidation ont été conservées.",
+      "strategy_scores": {
+        "consolidation": 8.5,
+        "sizing": 9.0,
+        "autoscaling": 8.5
+      },
+      "chosen_elements": {
+        "placement": "consolidation",
+        "resources": "sizing",
+        "probes": "sizing",
+        "autoscaling": "autoscaling"
+      },
+      "fields_addressed": [
+        "spec.template.spec.nodeSelector",
+        "spec.template.spec.affinity",
+        "spec.template.spec.containers[0].resources",
+        "spec.template.spec.containers[0].livenessProbe",
+        "spec.template.spec.containers[0].readinessProbe"
+      ],
+      "fields_left_open": [],
+      "warnings": []
+    }
+  ]
+}
