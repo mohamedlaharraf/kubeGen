@@ -1,20 +1,29 @@
-# Architecture C — Pipeline à 5 agents + blackboard + réparation bornée (K8s + énergie)
+# Architecture D — Pipeline à 5 agents + blackboard + débat multi-agents (K8s + énergie)
 
 Génère des manifestes Kubernetes optimisés en énergie (HPA, requests/limits,
 probes...) à partir d'une demande en langage naturel, via un pipeline à 5
 agents, propulsé par **Gemini** (Google AI Studio) orchestré avec
 **LangGraph**.
 
-C'est une évolution directe de l'Architecture B (pipeline strictement
-séquentiel) : même squelette à 5 agents, mais avec deux mécanismes ajoutés
-pour corriger un défaut observé empiriquement sur B — voir
+C'est une évolution directe de l'**Architecture C** (blackboard + boucles
+bornées) : squelette identique à 5 agents, blackboard, et deux cycles
+bornés inchangés — voir
 ["Pourquoi cette architecture existe"](#pourquoi-cette-architecture-existe)
-plus bas pour le diagnostic complet et la preuve concrète du bug corrigé.
+pour le diagnostic hérité de B/C. La **seule** différence structurelle est
+le remplacement de l'Agent 4 (un seul appel LLM en C) par un
+**sous-système de débat multi-agents** : trois personas concurrentes
+(Consolidation / Sizing / Autoscaling) proposent, se critiquent, puis un
+Agent Juge tranche et fusionne — voir
+["Le débat multi-agents (Agent 4)"](#le-débat-multi-agents-agent-4--consolidation-vs-sizing-vs-autoscaling)
+plus bas pour le détail complet, y compris le coût réel en appels LLM.
 
 ```
 Input -> Agent1 (analyse + extraction blackboard) -> Agent2 (template)
       -> Agent3 (validation) <-> [erreur schéma/sécurité ? -> Agent2 (correction) -> Agent3]* (borné, MAX_ITERATIONS)
-      -> Agent4 (énergie, avec application_context)
+      -> Agent4 (DÉBAT multi-agents, par composant, avec application_context) :
+             ┌──> Stratégie A (Consolidation) ──┐
+             ├──> Stratégie B (Sizing)          ┼──> [critique croisée]* (1-2 tours, borné) ──> Agent Juge
+             └──> Stratégie C (Autoscaling)     ──┘
       -> Agent5 (vérification) -> [gap réparable ? -> repair -> Agent5]* (borné, MAX_REPAIR_ATTEMPTS)
       -> Manifeste final
 ```
@@ -23,9 +32,9 @@ Input -> Agent1 (analyse + extraction blackboard) -> Agent2 (template)
   chaque agent ne reçoit toujours dans son prompt que les champs pertinents
   à son rôle — mais reçoit en plus, quand c'est pertinent, les contraintes
   qui traversent la frontière d'un composant unique (`global_constraints`,
-  voir `schemas.GlobalConstraint`).
+  voir `schemas.GlobalConstraint`). Hérité tel quel de l'Architecture C.
 - **DEUX cycles bornés indépendants**, chacun répondant à un problème
-  différent :
+  différent (inchangés depuis C) :
   1. `agent3 <-> agent2_generator_fix` — erreurs de SCHÉMA/SÉCURITÉ
      structurées (`ValidationError`, style linter : `line`/`rule`/`message`),
      détectées tôt, corrigées par le Générateur avec ce retour explicite.
@@ -34,11 +43,13 @@ Input -> Agent1 (analyse + extraction blackboard) -> Agent2 (template)
      respectées, détectées tard (vue complète, y compris best-effort),
      patch ciblé sans régénération. Borné par `MAX_REPAIR_ATTEMPTS`
      (défaut 2).
-- **Agent 4 (Énergie) reçoit `application_context`** — un résumé de 1 à 3
-  phrases du profil global de la demande (criticité, trafic, disponibilité),
-  pour décider si une infrastructure de scaling (HPA/KEDA) a du sens plutôt
-  que de l'ajouter par réflexe "bonne pratique" sur un composant à trafic
-  minimal.
+- **UN TROISIÈME mécanisme borné, interne à l'Agent 4** (nouveau en D,
+  n'apparaît PAS comme une arête supplémentaire dans le graphe LangGraph) :
+  le débat entre les 3 stratégies, borné par `DEBATE_MAX_TURNS` (défaut 1,
+  plafonné en dur à 2 dans le code quelle que soit la config).
+- Chaque agent-stratégie et le Juge reçoivent `application_context` — un
+  résumé de 1 à 3 phrases du profil global de la demande (criticité,
+  trafic, disponibilité), hérité tel quel de C.
 - Un seul agent (Agent 1) voit la demande brute de l'utilisateur — voir plus
   bas comment le projet garantit qu'elle est bien comprise et transmise.
 
@@ -72,28 +83,6 @@ distinct du problème :**
    contraintes qui le concernent (`utils/global_constraints.py`). Coût de
    contexte borné : on ne donne jamais le texte brut ni la spec entière à
    ces agents, seulement les quelques contraintes pertinentes.
-
-   ⚠️ **Cette extraction a ÉCHOUÉ une première fois en production** —
-   testée avec un vrai LLM sur le scénario PCI-DSS/PostgresCluster, la
-   contrainte "chiffrement au repos pour tous les volumes" a été rattachée
-   au seul composant applicatif visible, exactement comme sur
-   l'Architecture B, malgré l'instruction dans le prompt principal.
-   Correction à deux niveaux (`agents/agent1_analyse.py`) :
-   - **Appel LLM dédié** (`prompts/agent1_global_constraints_system.txt`) :
-     une seule responsabilité au lieu d'être noyée parmi 7 instructions
-     dans le prompt d'extraction principal, fusionné avec ce que
-     l'extraction principale trouve.
-   - **Filet de sécurité déterministe** (`_keyword_hits`) : si des indices
-     lexicaux de contrainte transversale (chiffrement, PCI-DSS, RGPD,
-     "tous les volumes"...) apparaissent dans le texte brut mais
-     n'apparaissent dans AUCUNE contrainte extraite, une deuxième
-     tentative dédiée est déclenchée avec l'indice explicite. Si ça
-     échoue encore, c'est signalé bruyamment dans
-     `coverage.requirements_unmapped` (`[EXTRACTION POTENTIELLEMENT
-     MANQUÉE]`) plutôt que de disparaître silencieusement.
-   Testé avec des mocks reproduisant exactement le bug observé (voir
-   `tests/test_global_constraints_extraction.py`), pas encore revérifié
-   avec un vrai appel API après cette correction.
 
 2. **Boucle Generator <-> Validator (`ValidationError`)** : Agent 3
    distingue maintenant les problèmes MÉCANIQUES (qu'il corrige lui-même,
@@ -161,7 +150,87 @@ relancer une exécution avec une demande précisée si besoin.
 > l'auto-vérification interne à l'étape, et (b) rendre toute perte
 > **visible et traçable** plutôt que silencieuse.
 
-## Rôle de chaque agent (strictement délimité)
+## Le débat multi-agents (Agent 4) : Consolidation vs Sizing vs Autoscaling
+
+### Pourquoi un débat plutôt qu'un seul agent Énergie
+
+La littérature sur l'ordonnancement énergétique dans Kubernetes documente
+des **stratégies concurrentes, parfois contradictoires**, plutôt qu'une
+méthode consensuelle unique : consolider les pods sur peu de nœuds
+réduit le nombre de nœuds actifs, mais étaler la charge protège mieux les
+contraintes de SLA/disponibilité. Un agent Énergie unique (Architecture C)
+applique SA heuristique, quelle qu'elle soit, sans jamais confronter son
+choix à un angle différent. L'Agent 4 d'Architecture D remplace cet agent
+unique par trois personas concurrentes qui débattent, puis un Agent Juge
+qui tranche explicitement — voir le rapport d'avancement n°1 (état de
+l'art, §2.6 et §5.4) pour la justification complète du choix du patron
+Debate.
+
+### Déroulement, par composant (indépendant d'un composant à l'autre)
+
+```
+                    ┌──> Stratégie A : Consolidation ─┐
+[YAML validé] ──────┼──> Stratégie B : Sizing         ┼──> [critique croisée]* ──> Agent Juge ──> YAML final
+                    └──> Stratégie C : Autoscaling   ──┘      (1-2 tours, borné)
+```
+
+1. **Fan-out (parallèle, 3 threads réels)** : les trois agents-stratégies
+   reçoivent tous EXACTEMENT la même information que l'ancien Agent 4 de
+   C — le YAML déjà validé du composant, ses champs énergie
+   (`energy_goals`/`resource_hints`/`traffic_windows`/`constraints`),
+   `global_constraints` filtrées, `application_context`. Ce qui change
+   n'est **pas l'accès à l'information, mais l'angle d'attaque** imposé
+   par leur prompt système (`prompts/strategy_*_system.txt`) :
+   - **Consolidation** : densité des nœuds — `nodeAffinity`/`nodeSelector`
+     vers un pool partagé, pas de sur-marge sur les `requests`, pas
+     d'anti-affinité par défaut.
+   - **Sizing** : ratio `requests`/`limits` resserré par profilage
+     (`resource_hints` si fourni, sinon estimation prudente calibrée sur
+     `workload_type`).
+   - **Autoscaling** : HPA classique ou `ScaledObject` KEDA selon que
+     `traffic_windows` est renseigné ou non ; explicitement désactivé sur
+     `Job`/`CronJob` (non applicable).
+2. **Débat (parallèle, 1 à `DEBATE_MAX_TURNS` tours, PLAFONNÉ EN DUR à 2
+   quelle que soit la config)** : chaque stratégie reçoit les deux autres
+   propositions et doit dire, pour chacune, `agrees: true` ou `false` —
+   avec obligation de justifier un **conflit concret sur le YAML**, pas un
+   désaccord de principe. Elle peut réviser sa proposition sur le point
+   contesté (jamais en abandonnant son angle).
+3. **Agent Juge (séquentiel, 1 seul appel)** : reçoit les 3 propositions
+   finales + tout le transcript des critiques. Fusionne ce qui est
+   complémentaire (cas le plus fréquent : Sizing touche `resources`,
+   Autoscaling touche le HPA, Consolidation touche l'affinity — trois
+   sections différentes du même YAML), et **tranche explicitement** chaque
+   conflit réel relevé, en pesant gain énergétique attendu vs risque
+   SLA/performance vs `application_context`. Produit un `reasoning`
+   explicite, un `strategy_scores` (0-10 par stratégie), et
+   `chosen_elements` (quelle section vient de quelle stratégie).
+
+Le transcript complet (toutes les propositions, tous les tours, toutes les
+critiques) est conservé dans `output/run_.../agent4_debate_transcript.json`
+pour l'audit — voir la section Structure du projet.
+
+### ⚠️ Coût réel : 7 appels LLM par composant, contre 1 en Architecture C
+
+À `DEBATE_MAX_TURNS=1` (valeur par défaut) : 3 propositions initiales + 3
+critiques + 1 verdict du Juge = **7 appels LLM par composant**, contre un
+seul en Architecture C. À `DEBATE_MAX_TURNS=2` : 3 + 6 + 1 = **10 appels**.
+Sur un scénario à plusieurs composants (ex: microservices), ce coût se
+multiplie mécaniquement par composant — donnée à comparer explicitement
+face au gain de qualité observé lors du benchmark A/B/C/D, dans l'esprit
+du rapport d'avancement n°2 (étude comparative A vs B : ×17 en tokens pour
+B, sans gain mesurable sur les scénarios simples).
+
+### Thread-safety du client LLM
+
+Architecture D est le **premier appelant réellement multi-thread** de
+`call_llm` dans tout le projet (fan-out parallèle des stratégies).
+`llm_client.py::_get_client()` protège l'initialisation paresseuse du
+client `google-genai` par un `threading.Lock()` pour éviter une race sur
+la toute première requête du run — coût négligeable, le verrou n'est
+retenu qu'à cette première initialisation.
+
+
 
 | Agent | Entrée | Rôle | Ne fait PAS |
 |---|---|---|---|
@@ -169,7 +238,7 @@ relancer une exécution avec une demande précisée si besoin.
 | **2. Template** | Un `ServiceComponent` à la fois (champs structurels) + `global_constraints` filtrées | Manifeste K8s de base **+ sidecars** **+ hardening sécurité** **+ scrape Prometheus** | Resources, HPA |
 | **2bis. Correction sur retour** (nouveau) | `current_yaml` complet + `validation_errors` d'Agent 3 | Corriger CHAQUE erreur signalée, sans rien casser d'autre | Ajouter des fonctionnalités non demandées, optimiser l'énergie |
 | **3. Validation** | `current_yaml` (tous composants) + `components[]` + `global_constraints` | Corriger mécaniquement (YAML/cohérence) ; **signaler** (pas corriger) les problèmes de schéma/sécurité en `validation_errors` | Optimisation énergie, corriger elle-même la sécurité de fond |
-| **4. Énergie** | Un `ServiceComponent` à la fois + son YAML isolé + `global_constraints` filtrées + `application_context` | Ajouter `resources`, `HPA` (ou `ScaledObject` KEDA) **si justifié par le contexte**, probes... | Toucher à l'identité du workload, ajouter un HPA par réflexe |
+| **4. Débat (Consolidation/Sizing/Autoscaling + Juge)** | Un `ServiceComponent` à la fois + son YAML isolé + `global_constraints` filtrées + `application_context` — identique pour les 3 stratégies ET le Juge | 3 propositions concurrentes en parallèle, 1-2 tours de critique croisée bornés, puis fusion + arbitrage explicite par le Juge (voir section dédiée plus haut) | Toucher à l'identité du workload ; le Juge ne moyenne jamais silencieusement deux choix contradictoires |
 | **5. Vérification finale** | Manifeste v3/final (tous composants, y compris best-effort) + spec + tous les rapports | Contrôle syntaxique + audit + détection de gaps réparables (`repair_requests`) | Corriger elle-même les choix métier — délègue au noeud repair |
 | **Réparation ciblée** | UN document précis + le gap signalé par Agent 5 | Patch ciblé de CE document, rien d'autre | Ré-optimiser ou régénérer depuis zéro |
 
@@ -488,14 +557,19 @@ pip install pytest
 pytest tests/ -v
 ```
 
-63 tests, tous avec LLM entièrement mocké (aucun appel réseau, aucune clé
+156 tests, tous avec LLM entièrement mocké (aucun appel réseau, aucune clé
 API requise) : câblage du `StateGraph`, parsing JSON→Pydantic, non-
 régression sur chaque bug réel rencontré au fil du développement (cron KEDA
 inversé, faux positifs de cross-référence StatefulSet/CronJob, clé de
 secret non documentée...), scénarios Job/CronJob/microservices/sidecars
-multiples/dépendances circulaires, et les nouveaux modules déterministes
+multiples/dépendances circulaires, les modules déterministes
 (`cost_estimate`, `cluster_validate`, `admission_policies`,
-`dependency_graph`) testés isolément avec `subprocess`/`input` mockés.
+`dependency_graph`) testés isolément avec `subprocess`/`input` mockés, et
+le sous-système de débat (`tests/test_agent4_debate.py`, 7 tests) :
+parallélisme réel prouvé par chronométrage + identité de threads (pas
+seulement "3 appels ont eu lieu"), borne `DEBATE_MAX_TURNS` respectée y
+compris son plafond dur à 2, conflit réel entre stratégies détecté et
+tranché explicitement par le Juge.
 
 ## Structure du projet
 
@@ -509,15 +583,25 @@ pipeline-kubegen/
 │                                  #   (route_after_generation_validation, route_after_final_verification)
 ├── schemas.py                    # NormalizedSpec, ServiceComponent, PipelineState...
 ├── config.py                     # Lecture .env
-├── llm_client.py                  # Appel Gemma via Google AI Studio
-├── prompts/                       # Un prompt système par agent
+├── llm_client.py                  # Appel Gemini via Google AI Studio (thread-safe : lock
+│                                  #   sur l'init paresseuse du client, cf. Agent 4/débat)
+├── prompts/
+│   ├── agent1_system.txt / agent2_system.txt / agent3_system.txt / agent5_system.txt
+│   ├── strategy_consolidation_system.txt      # Persona Stratégie A (Agent 4/débat)
+│   ├── strategy_sizing_system.txt              # Persona Stratégie B (Agent 4/débat)
+│   ├── strategy_autoscaling_system.txt          # Persona Stratégie C (Agent 4/débat)
+│   ├── strategy_critique_instructions.txt        # Tour de critique (3 stratégies)
+│   └── debate_judge_system.txt                    # Agent Juge (Agent 4/débat)
 ├── agents/
 │   ├── agent1_analyse.py           # Extraction + auto-vérification + réparation
 │   ├── agent2_template.py           # Template + sidecars + Ingress/RBAC/PVC/ConfigMap/
 │   │                                #   NetworkPolicy/Rollout/policies d'admission/
 │   │                                #   Gateway API/cert-manager/multi-cluster/best-effort
 │   ├── agent3_validation.py          # Validation structurelle
-│   ├── agent4_energie.py              # HPA/ScaledObject, resources (LLM ou métriques réelles)
+│   ├── agent4_energie.py              # Hérité de C, plus branché au graphe : réutilisé
+│   │                                  #   par agent4_debate.py (découpage par composant,
+│   │                                  #   dimensionnement déterministe --metrics-source)
+│   ├── agent4_debate.py                # Débat Consolidation/Sizing/Autoscaling + Juge (D)
 │   └── agent5_verification.py          # Vérif syntaxique + audit traçabilité
 ├── utils/
 │   ├── yaml_utils.py                    # Parsing YAML multi-documents
@@ -530,7 +614,7 @@ pipeline-kubegen/
 │   ├── llm_metrics.py                          # Latence/appels/tokens (collecteur global)
 │   └── logging_utils.py                         # Affichage console (rich)
 ├── examples/example_request.txt
-└── tests/                                       # 89 tests, LLM/subprocess/input mockés
+└── tests/                                       # 156 tests, LLM/subprocess/input mockés
 ```
 
 ## Métriques d'exécution (latence, appels LLM, tokens)
@@ -597,164 +681,3 @@ le schéma à chaque nouveau cas imprévu :
   afficher "Aucun point ouvert détecté" (vérification indépendante de la
   bonne propagation par les agents, en défense en profondeur).
 
-### Le trou qui restait : que se passe-t-il si l'Agent 1 n'obéit pas ?
-
-Bug réel trouvé sur un run en conditions réelles (API Gemini, pas un mock) :
-malgré la consigne, le LLM a parfois créé un `components[]` invalide pour
-représenter une ressource hors périmètre (ex: un opérateur PostgreSQL avec
-un `workload_type: "PostgresCluster"` qui n'existe pas dans l'énumération,
-et une `image` manquante) au lieu d'utiliser `unmapped_requirements`.
-Résultat avant correction : `NormalizedSpec.model_validate()` levait une
-`ValidationError` **non rattrapée**, qui faisait planter tout le run — y
-compris la partie de la demande parfaitement valide.
-
-Trois niveaux de correction, dans `agents/agent1_analyse.py` et `schemas.py` :
-1. **Coercion tolérante** sur les champs enum "administratifs" à faible
-   impact (`cert_manager_issuer_kind`, `api_style`, `observability_style`,
-   `architecture_type`, `deployment_strategy.strategy`, `PortSpec.protocol`) :
-   une valeur `null` ou mal castée retombe sur le défaut documenté plutôt
-   que de faire planter la validation. Les champs à fort impact fonctionnel
-   (`workload_type`, `VolumeSpec.kind`) restent volontairement stricts — un
-   défaut silencieux y serait plus dangereux qu'une erreur visible.
-2. **Réparation de schéma ciblée** : si la validation échoue malgré tout,
-   un second appel LLM reçoit les erreurs Pydantic exactes (chemin du
-   champ, message, valeur reçue) et corrige uniquement ce qui est cassé —
-   avec pour instruction explicite de déplacer vers `unmapped_requirements`
-   toute entrée qui n'aurait jamais dû être un `component`.
-3. **Filet de sécurité déterministe final** : si même la réparation via
-   LLM échoue après plusieurs tentatives, les `components[i]` fautifs sont
-   retirés par du code Python (pas un nouvel appel LLM), en ne retirant
-   QUE ce qui est rattachable sans ambiguïté à un composant précis — une
-   erreur au niveau racine de la spec ne déclenche jamais de retrait au
-   hasard, le run échoue proprement dans ce cas plutôt que de deviner.
-
-Testé par reproduction fidèle du bug exact observé (`tests/test_agent1_schema_recovery.py`).
-
-### Deux autres bugs réels trouvés en creusant plus loin
-
-**Le bloc best-effort pouvait disparaître à l'étape suivante.** L'Agent 3
-régénère tout le YAML via un appel LLM — rien ne garantissait qu'il
-préserve le bloc best-effort de l'Agent 2 en le jugeant "hors sujet" lors
-de sa réécriture. Corrigé par `_split_off_unmapped_block()` dans
-`agents/agent3_validation.py` : le bloc est isolé AVANT l'appel LLM
-(l'Agent 3 ne le voit donc jamais, ne peut pas le juger inutile) et
-réinjecté APRÈS, par code, quoi qu'ait fait le LLM entre-temps. Testé en
-simulant explicitement un LLM qui "oublie" le bloc
-(`tests/test_agent3_unmapped_isolation.py`).
-
-**Les sidecars à injection automatique (Dapr, Istio, Linkerd...) étaient
-mal générés**, pas par manque d'isolation de contexte mais par manque de
-connaissance métier dans le prompt : `sidecars` est bien un champ
-structuré, l'Agent 2 reçoit toute l'info nécessaire, mais le prompt
-traitait tout sidecar de façon générique ("conteneur additionnel dans le
-Pod"), alors que Dapr/Istio/Linkerd fonctionnent par injection automatique
-via annotations, pas par déclaration manuelle d'un conteneur. Corrigé dans
-`prompts/agent2_system.txt` : ces systèmes reconnus utilisent maintenant
-leur convention d'injection propre (ex: `dapr.io/enabled: "true"` sur les
-annotations du pod) plutôt qu'un conteneur manuel dans `containers[]`.
-
-Un troisième correctif, plus délicat (faire connaître au fragment
-best-effort les exigences de sécurité/dépendances du composant connu
-associé), a été délibérément laissé de côté pour l'instant : plus on ouvre
-le contexte transmis à la génération best-effort, plus on se rapproche du
-risque qu'on cherche justement à éviter — un LLM avec plus de surface pour
-halluciner des connexions inventées entre composants. À tester séparément
-si le besoin se confirme, pour pouvoir attribuer clairement l'effet de ce
-changement précis plutôt que de le mélanger avec d'autres.
-
-Limite honnête, assumée : ces fragments passent par `kubeconform`
-(validation syntaxique générique, fonctionne pour n'importe quel `kind`)
-mais PAS par les cross-vérifications spécifiques (`check_httproute_cross_references`
-et consorts), qui ne peuvent exister que pour des types anticipés à
-l'avance. C'est la différence assumée entre "universel et fiable partout"
-(impossible) et "capable de tenter n'importe quoi, honnête sur ce qui a
-été vraiment vérifié" (atteignable).
-
-### Deux bugs supplémentaires trouvés sur des runs réels (Architecture C)
-
-**La réparation ciblée pouvait faire disparaître un champ sans que rien ne
-le signale.** Le noeud `agents/agent_repair.py` remplaçait le document
-corrigé EN ENTIER (`docs[idx] = corrected`) — si le LLM de réparation,
-en reconstruisant le JSON, omettait par inadvertance un champ sans
-rapport avec le correctif demandé (observé : une réparation qui rétablit
-`privileged`/`runAsUser` a fait disparaître `readOnlyRootFilesystem` au
-passage), rien ne l'attrapait. Corrigé par `_merge_preserving_missing_fields()` :
-fusion déterministe qui restaure toute clé absente du document corrigé
-mais présente dans l'original (récursif sur les dicts ET sur les listes
-d'objets nommés — containers, volumes — appariés par `name`), tout en
-préservant les modifications volontaires. Chaque restauration est
-journalisée (`⚠️ N champ(s) restauré(s) automatiquement...`), jamais
-silencieuse. Testé en rejouant exactement le bug observé
-(`tests/test_repair_field_preservation.py`).
-
-**Agent 3 pouvait contredire une exigence de sécurité explicitement
-demandée.** Un scénario légitime ("outil de diagnostic bas niveau,
-doit tourner en mode privilégié pour des raisons documentées") a vu
-Agent 3 flaguer `privileged`/`root` comme `validation_error` générique,
-déclenchant une correction qui désactivait ces flags — avant que la
-boucle de réparation (Agent 5) ne les rétablisse, les deux mécanismes se
-contredisant faute de contexte partagé. Corrigé à deux niveaux
-(`agents/agent3_validation.py`) : Agent 3 reçoit maintenant
-`security_requirements` du composant et une instruction explicite de
-vérifier une posture de sécurité contre ce champ avant de la flaguer ;
-un filet déterministe (`_explicitly_requested()`) filtre après coup
-toute `validation_error` qui contredirait une exigence explicite, même
-si le LLM ignore l'instruction. Testé avec le scénario exact observé
-(`tests/test_agent3_security_requirements_guard.py`).
-
-## Gateway API, cert-manager, StatefulSet natif, multi-cluster
-
-Ajouté suite à un second audit de couverture :
-
-- **Gateway API** : `IngressSpec.api_style="gateway_api"` génère un
-  `HTTPRoute` (`gateway.networking.k8s.io`) au lieu d'un `Ingress`
-  classique, rattaché à une `Gateway` existante (`gateway_name`) si
-  fournie, sinon un squelette de `Gateway` avec avertissement explicite à
-  faire réviser par l'équipe infra. Comportement par défaut (`"ingress"`)
-  inchangé.
-- **cert-manager** : `IngressSpec.cert_manager_issuer` génère une vraie
-  ressource `Certificate` (`cert-manager.io/v1`) référençant l'`Issuer`/
-  `ClusterIssuer` donné, avec avertissement de dépendance externe. Sans ce
-  champ, comportement inchangé (Secret TLS simplement référencé).
-- **`volumeClaimTemplates` natif (StatefulSet)** : pour un composant
-  `workload_type="StatefulSet"` avec un volume `kind="pvc"`, l'Agent 2
-  utilise désormais `spec.volumeClaimTemplates` (un volume PAR RÉPLICA, le
-  mécanisme natif K8s) au lieu d'un PVC externe partagé — l'ancien
-  comportement aurait fait partager le même volume par tous les réplicas,
-  cassant l'isolation des données. `utils/k8s_validate.py` détecte
-  explicitement cet anti-pattern s'il réapparaît
-  (`check_statefulset_volume_claim_templates`). Les autres types de
-  workload (Deployment, DaemonSet, Job, CronJob) continuent d'utiliser un
-  PVC externe classique, inchangé.
-- **Multi-cluster** : `target_clusters` non vide déclenche désormais la
-  génération DÉTERMINISTE (pas de LLM, pour éviter d'halluciner des
-  adresses de cluster ou une URL de dépôt Git) d'un squelette `ApplicationSet`
-  ArgoCD avec un générateur `list` (une entrée par cluster), placeholders
-  explicites pour l'URL API de chaque cluster et le dépôt GitOps —
-  toujours pas une orchestration multi-cluster fonctionnelle "out of the
-  box" (impossible sans les vraies informations d'accès), mais un point de
-  départ structurellement correct, validé contre le vrai schéma OpenAPI
-  ArgoCD via kubeconform.
-
-Tous les quatre validés par des tests dédiés + un test d'intégration bout-
-en-bout qui combine les quatre en même temps et vérifie le résultat contre
-`utils/k8s_validate.py` ET le vrai binaire `kubeconform` (schémas
-`gateway.networking.k8s.io`, `cert-manager.io`, `argoproj.io` via le
-catalogue CRD communautaire).
-
-## Limites connues (honnêtes, pas exhaustives)
-
-Même après ces deux tours d'extension, ce pipeline ne couvre pas "tous les
-cas possibles" — voir la discussion complète dans l'historique du projet.
-Encore hors périmètre : gestion complète du cycle de vie cert-manager
-(le pipeline crée le `Certificate`, mais ne peut pas garantir que
-cert-manager traite effectivement la demande ni que l'Issuer référencé est
-valide), création automatique de `GatewayClass` (seul un placeholder est
-généré si aucune `Gateway` existante n'est fournie), et toute
-authentification/accès réel aux clusters listés dans `target_clusters`
-(le pipeline ne peut techniquement pas connaître ces informations). La
-traduction RBAC/service mesh par le LLM reste "au mieux" — à revoir avant
-tout déploiement sensible. `--dry-run-apply` et `--check-cluster-deps`
-nécessitent un accès réseau à un vrai cluster : sans lui, ce sont
-`--kubeconform` et `utils/k8s_validate.py` qui portent l'essentiel de la
-détection d'erreurs.

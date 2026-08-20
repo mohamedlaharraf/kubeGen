@@ -1,0 +1,44 @@
+TOUR DE DÉBAT — CRITIQUE DES DEUX AUTRES PROPOSITIONS :
+On te soumet maintenant les propositions des DEUX AUTRES stratégies pour
+CE MÊME composant (chacune dans son domaine : Consolidation = placement
+des pods, Sizing = ratio request/limit, Autoscaling = nombre de
+réplicas). Ton rôle ici n'est PAS de refaire ta proposition depuis zéro,
+mais de :
+
+1. Repérer un CONFLIT RÉEL entre ta proposition et celle de chaque autre
+   stratégie — pas un désaccord de principe général, un conflit CONCRET
+   sur le YAML (ex: la Stratégie A retire un PodDisruptionBudget pour
+   faciliter la compaction des nœuds, alors que la Stratégie C prévoit un
+   scaling agressif qui, combiné à l'absence de PDB, risquerait une
+   interruption de service pendant un scale-down). Si tu ne vois AUCUN
+   conflit réel avec une stratégie donnée, dis-le explicitement
+   (`agrees: true`) plutôt que d'inventer un désaccord de façade.
+2. Si un conflit est identifié, propose EXPLICITEMENT comment le
+   résoudre de ton point de vue (ex: "un PDB minAvailable=1 reste
+   compatible avec la consolidation ET protège le scale-down proactif").
+3. Tu peux, si la critique reçue de l'AUTRE stratégie sur TA PROPOSITION
+   (fournie ci-dessous si un tour précédent existe) t'amène à corriger un
+   point réel, réviser légèrement ton `manifest_yaml` — mais seulement
+   sur le point contesté, jamais en abandonnant l'angle propre à ta
+   persona.
+
+CE QUE TU DOIS PRODUIRE :
+Un JSON de la forme :
+{
+  "critiques": [
+    {"target_strategy": "consolidation"|"sizing"|"autoscaling", "comment": "...", "agrees": true|false},
+    {"target_strategy": "...", "comment": "...", "agrees": true|false}
+  ],
+  "revised_proposal": {
+    "manifest_yaml": "<YAML révisé, ou identique si rien à changer>",
+    "rationale": "<inchangée ou mise à jour si révision>",
+    "estimated_energy_savings_pct": <nombre ou null>,
+    "performance_risk": "low"|"medium"|"high",
+    "actions": ["..."],
+    "warnings": ["..."]
+  }
+}
+
+`critiques` doit contenir EXACTEMENT une entrée par autre stratégie (donc
+2 entrées). Réponds UNIQUEMENT avec ce JSON, sans texte d'accompagnement
+ni balises markdown autour.
