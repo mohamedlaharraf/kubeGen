@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="720" viewBox="0 0 1600 720" role="img" aria-labelledby="title desc">
+  <title id="title">Architecture C : orchestrateur, tableau noir et boucles bornées</title>
+  <desc id="desc">Un orchestrateur gère un tableau noir partagé, une boucle entre génération et validation et une boucle entre vérification finale et réparation.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#40526b"/></marker>
+    <style>
+      .title{font:700 27px 'DejaVu Sans',Arial,sans-serif;fill:#182235}.subtitle{font:16px 'DejaVu Sans',Arial,sans-serif;fill:#536277}.label{font:700 16px 'DejaVu Sans',Arial,sans-serif;fill:#182235}.small{font:13px 'DejaVu Sans',Arial,sans-serif;fill:#34435a}.edge{stroke:#40526b;stroke-width:2.3;fill:none;marker-end:url(#arrow)}.dash{stroke:#6d7e94;stroke-width:1.8;fill:none;stroke-dasharray:7 6;marker-end:url(#arrow)}.feedback{stroke:#40526b;stroke-width:2.3;fill:none;stroke-linejoin:round;stroke-linecap:round}.box{stroke-width:2;rx:13}.tag{font:700 13px 'DejaVu Sans',Arial,sans-serif;fill:#6b4c00}
+    </style>
+  </defs>
+  <rect width="1600" height="720" fill="#ffffff"/>
+  <text x="65" y="58" class="title">Architecture C — Orchestrateur explicite, tableau noir et boucles bornées</text>
+  <text x="65" y="87" class="subtitle">Les erreurs structurées et les contraintes globales sont partagées, puis traitées de manière contrôlée.</text>
+  <rect x="495" y="119" width="505" height="75" class="box" fill="#f3f4f6" stroke="#6c7787" stroke-dasharray="7 5"/>
+  <text x="748" y="150" text-anchor="middle" class="label">Tableau noir partagé</text><text x="748" y="175" text-anchor="middle" class="small">Contraintes globales · erreurs de validation · état et provenance</text>
+  <rect x="40" y="311" width="125" height="84" class="box" fill="#f8e9ff" stroke="#d66cdd"/><text x="103" y="346" text-anchor="middle" class="label">Utilisateur</text><text x="103" y="370" text-anchor="middle" class="small">Demande</text>
+  <rect x="220" y="296" width="160" height="113" class="box" fill="#ddfaf6" stroke="#48c9bd"/><text x="300" y="330" text-anchor="middle" class="label">1. Analyse</text><text x="300" y="355" text-anchor="middle" class="small">Spécification normalisée</text><text x="300" y="379" text-anchor="middle" class="small">et contraintes globales</text>
+  <rect x="465" y="296" width="165" height="113" class="box" fill="#fff1df" stroke="#f6a24a"/><text x="548" y="330" text-anchor="middle" class="label">2. Génération</text><text x="548" y="355" text-anchor="middle" class="small">YAML initial</text><text x="548" y="379" text-anchor="middle" class="small">par composant</text>
+  <rect x="705" y="296" width="165" height="113" class="box" fill="#e7f3ff" stroke="#60a9e8"/><text x="788" y="330" text-anchor="middle" class="label">3. Validation</text><text x="788" y="355" text-anchor="middle" class="small">Cohérence, schéma</text><text x="788" y="379" text-anchor="middle" class="small">et sécurité</text>
+  <rect x="944" y="296" width="165" height="113" class="box" fill="#e8f7ed" stroke="#60bf83"/><text x="1027" y="330" text-anchor="middle" class="label">4. Énergie</text><text x="1027" y="355" text-anchor="middle" class="small">Ressources, mise</text><text x="1027" y="379" text-anchor="middle" class="small">à l’échelle, placement</text>
+  <rect x="1183" y="296" width="165" height="113" class="box" fill="#eeeaff" stroke="#9d83e8"/><text x="1266" y="330" text-anchor="middle" class="label">5. Vérification</text><text x="1266" y="355" text-anchor="middle" class="small">Audit global et</text><text x="1266" y="379" text-anchor="middle" class="small">gaps réparables</text>
+  <rect x="1425" y="311" width="130" height="84" class="box" fill="#f1f6fb" stroke="#77889f"/><text x="1490" y="346" text-anchor="middle" class="label">Sortie</text><text x="1490" y="370" text-anchor="middle" class="small">YAML + audit</text>
+  <path d="M165 353 H220" fill="none" stroke="#40526b" stroke-width="2.3" marker-end="url(#arrow)"/>
+  <path d="M380 353 H465" fill="none" stroke="#40526b" stroke-width="2.3" marker-end="url(#arrow)"/>
+  <path d="M630 353 H705" fill="none" stroke="#40526b" stroke-width="2.3" marker-end="url(#arrow)"/>
+  <path d="M870 353 H944" fill="none" stroke="#40526b" stroke-width="2.3" marker-end="url(#arrow)"/>
+  <path d="M1109 353 H1183" fill="none" stroke="#40526b" stroke-width="2.3" marker-end="url(#arrow)"/>
+  <path d="M1348 353 H1425" fill="none" stroke="#40526b" stroke-width="2.3" marker-end="url(#arrow)"/>
+  <path d="M300 296 V194" fill="none" stroke="#6d7e94" stroke-width="1.8" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <path d="M548 296 V194" fill="none" stroke="#6d7e94" stroke-width="1.8" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <path d="M788 296 V194" fill="none" stroke="#6d7e94" stroke-width="1.8" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <path d="M1266 296 V194" fill="none" stroke="#6d7e94" stroke-width="1.8" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+  <path d="M788 409 V493 H548 V424" fill="none" stroke="#40526b" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/><text x="557" y="437" class="small">retour</text><text x="668" y="478" text-anchor="middle" class="tag">Cycle 1 — erreurs structurées · maximum 3 tentatives</text>
+  <rect x="540" y="516" width="257" height="44" rx="10" fill="#fff5ce" stroke="#f1c84d"/><text x="668" y="543" text-anchor="middle" class="small">Génération corrige → validation recontrôle</text>
+  <rect x="1168" y="528" width="196" height="73" class="box" fill="#fff1f1" stroke="#ef8f8f"/><text x="1266" y="558" text-anchor="middle" class="label">Réparation ciblée</text><text x="1266" y="582" text-anchor="middle" class="small">Patch d’un document</text>
+  <path d="M1266 409 V528" fill="none" stroke="#40526b" stroke-width="2.3"/><text x="1276" y="510" class="small">réparer</text><path d="M1364 564 H1400 V445 H1266 V424" fill="none" stroke="#40526b" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/><text x="1276" y="440" class="small">recontrôler</text><text x="1266" y="625" text-anchor="middle" class="tag">Cycle 2 — maximum 2 tentatives</text>
+  <text x="800" y="680" text-anchor="middle" class="subtitle">L’orchestrateur décide du routage ; les deux boucles sont distinctes, explicites et bornées.</text>
+</svg>

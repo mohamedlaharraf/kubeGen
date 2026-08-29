@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560" role="img" aria-labelledby="title desc">
+  <title id="title">Architecture A : agent unique</title>
+  <desc id="desc">Un agent unique reçoit la demande complète, produit le manifeste Kubernetes et les traces d'exécution.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#40526b"/></marker>
+    <style>
+      .title{font:700 27px 'DejaVu Sans',Arial,sans-serif;fill:#182235}.subtitle{font:16px 'DejaVu Sans',Arial,sans-serif;fill:#536277}.label{font:700 17px 'DejaVu Sans',Arial,sans-serif;fill:#182235}.small{font:14px 'DejaVu Sans',Arial,sans-serif;fill:#34435a}.edge{stroke:#40526b;stroke-width:2.5;fill:none;marker-end:url(#arrow)}.box{stroke-width:2.2;rx:14}.note{font:700 15px 'DejaVu Sans',Arial,sans-serif;fill:#6b4c00}
+    </style>
+  </defs>
+  <rect width="1400" height="560" fill="#ffffff"/>
+  <text x="70" y="62" class="title">Architecture A — Agent unique (architecture de référence)</text>
+  <text x="70" y="91" class="subtitle">Une seule inférence reçoit l’intégralité de la demande et porte toutes les responsabilités.</text>
+  <rect x="75" y="218" width="180" height="95" class="box" fill="#f8e9ff" stroke="#d66cdd"/>
+  <text x="165" y="257" text-anchor="middle" class="label">Utilisateur</text>
+  <text x="165" y="283" text-anchor="middle" class="small">Demande en langage naturel</text>
+  <path d="M255 265 H390" fill="none" stroke="#40526b" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="323" y="244" text-anchor="middle" class="small">demande complète</text>
+  <rect x="392" y="157" width="450" height="220" class="box" fill="#e8f7ed" stroke="#60bf83"/>
+  <text x="617" y="198" text-anchor="middle" class="label">Agent LLM unique</text>
+  <line x1="432" y1="218" x2="802" y2="218" stroke="#a6dcb7" stroke-width="1.5"/>
+  <text x="617" y="250" text-anchor="middle" class="small">Analyse des exigences et génération YAML</text>
+  <text x="617" y="280" text-anchor="middle" class="small">Bonnes pratiques, sécurité et optimisation énergétique</text>
+  <text x="617" y="310" text-anchor="middle" class="small">Validation légère et journalisation</text>
+  <rect x="468" y="329" width="298" height="29" rx="10" fill="#fff5ce" stroke="#f1c84d"/>
+  <text x="617" y="350" text-anchor="middle" class="note">Un appel LLM logique · aucune boucle inter-agents</text>
+  <path d="M842 265 H1000" fill="none" stroke="#40526b" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="920" y="244" text-anchor="middle" class="small">sorties générées</text>
+  <rect x="1002" y="187" width="305" height="155" class="box" fill="#e7f3ff" stroke="#60a9e8"/>
+  <text x="1155" y="226" text-anchor="middle" class="label">Résultats du run</text>
+  <text x="1155" y="259" text-anchor="middle" class="small">Manifeste Kubernetes final</text>
+  <text x="1155" y="285" text-anchor="middle" class="small">Sortie brute et métadonnées</text>
+  <text x="1155" y="311" text-anchor="middle" class="small">Latence, tokens, erreurs éventuelles</text>
+  <line x1="75" y1="446" x2="1307" y2="446" stroke="#d7dee8" stroke-width="1.5"/>
+  <text x="691" y="486" text-anchor="middle" class="subtitle">Point de comparaison : simplicité et coût minimal, mais aucune spécialisation ni correction par un agent distinct.</text>
+</svg>
