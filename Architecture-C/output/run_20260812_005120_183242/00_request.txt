@@ -1,0 +1,1 @@
+Déploie une application e-commerce avec frontend React (3 replicas, port 3000, exposé sur shop.mon-domaine.com), backend API Node.js (5 replicas, port 8080), Redis cache (1 replica, port 6379), namespace ecommerce

@@ -1,0 +1,126 @@
+{
+  "architecture_type": "single",
+  "namespace": "default",
+  "components": [],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "{'requirement': \"Namespace 'ecommerce'\", 'suggested_kind': 'namespace'}",
+      "suggested_kind": "namespace"
+    },
+    {
+      "text": "{'requirement': 'Composant Backend API Node.js (image myregistry/backend:2.5.0, 5 replicas, port 8080, DB_URL depuis secret, HPA min:3 max:10 CPU:65%, KEDA 00h-06h:2 09h-12h:10, sidecar Envoy, PDB min:3)', 'suggested_kind': 'component'}",
+      "suggested_kind": "component"
+    },
+    {
+      "text": "{'requirement': 'Composant Redis cache (image redis:7.2-alpine, 1 replica, port 6379, stockage 5GB, sonde TCP, interne)', 'suggested_kind': 'component'}",
+      "suggested_kind": "component"
+    },
+    {
+      "text": "{'requirement': 'Composant PostgreSQL CrunchyData (3 instances, réplication synchrone, chiffrement encrypted-gold, sauvegardes, 10GB, sonde TCP, interne)', 'suggested_kind': 'component'}",
+      "suggested_kind": "component"
+    },
+    {
+      "text": "{'requirement': 'Composant Prometheus (1 replica, port 9090)', 'suggested_kind': 'component'}",
+      "suggested_kind": "component"
+    },
+    {
+      "text": "{'requirement': 'Composant Grafana (1 replica, port 3000, exposé sur monitoring.mon-domaine.com)', 'suggested_kind': 'component'}",
+      "suggested_kind": "component"
+    },
+    {
+      "text": "{'requirement': 'Hôtes Ingress supplémentaires (api.mon-domaine.com, monitoring.mon-domaine.com)', 'suggested_kind': 'ingress'}",
+      "suggested_kind": "ingress"
+    },
+    {
+      "text": "{'requirement': 'Règles NetworkPolicy backend->redis/postgres', 'suggested_kind': 'network_policy'}",
+      "suggested_kind": "network_policy"
+    },
+    {
+      "text": "{'requirement': 'Sondes de santé TCP pour services internes', 'suggested_kind': 'probes'}",
+      "suggested_kind": "probes"
+    }
+  ],
+  "global_constraints": [
+    {
+      "text": "securityContext runAsNonRoot",
+      "scope": "all_containers",
+      "applies_to": [],
+      "category": "security"
+    },
+    {
+      "text": "rotation clés 90 jours",
+      "scope": "all_components",
+      "applies_to": [],
+      "category": "security"
+    },
+    {
+      "text": "probes HTTP pour services exposés, probes TCP pour services internes",
+      "scope": "all_components",
+      "applies_to": [],
+      "category": "other"
+    },
+    {
+      "text": "resources optimisées",
+      "scope": "all_components",
+      "applies_to": [],
+      "category": "other"
+    },
+    {
+      "text": "probes HTTP pour services exposés",
+      "scope": "specific",
+      "applies_to": [],
+      "category": "other"
+    },
+    {
+      "text": "probes TCP pour services internes",
+      "scope": "specific",
+      "applies_to": [],
+      "category": "other"
+    }
+  ],
+  "application_context": "",
+  "raw_user_request": "Déploie une application e-commerce full-stack dans le namespace 'ecommerce' : frontend React (image myregistry/frontend:3.2.1, 3 replicas, port 3000, exposé sur shop.mon-domaine.com avec TLS, HPA min:2 max:6 CPU:70%, API_URL=http://backend-api:8080), backend API Node.js (image myregistry/backend:2.5.0, 5 replicas, port 8080, DB_URL depuis secret db-secret key url, HPA min:3 max:10 CPU:65%, Prometheus port 9090, sidecar Envoy), Redis cache (image redis:7.2-alpine, 1 replica, port 6379, stockage 5GB, interne), PostgreSQL CrunchyData (3 instances, réplication synchrone, chiffrement encrypted-gold, backups, 10GB, interne), Prometheus (1 replica, port 9090), Grafana (1 replica, port 3000, exposé sur monitoring.mon-domaine.com), Ingress avec TLS cert-manager (ClusterIssuer letsencrypt-prod) pour shop.mon-domaine.com, api.mon-domaine.com, monitoring.mon-domaine.com, NetworkPolicy: frontend->backend, backend->redis/postgres, securityContext runAsNonRoot, rotation clés 90 jours, KEDA pour backend (00h-06h:2, 09h-12h:10), PDB pour frontend (min:2) et backend (min:3), resources optimisées, probes HTTP pour services exposés, probes TCP pour services internes",
+  "ambiguities": [],
+  "coverage": {
+    "requirements_detected": [],
+    "requirements_mapped": [
+      "Frontend React (image myregistry/frontend:3.2.1, 3 replicas, port 3000)",
+      "Exposé sur shop.mon-domaine.com avec TLS cert-manager",
+      "HPA min:2 max:6 CPU:70%",
+      "API_URL=http://backend-api:8080",
+      "PDB frontend minAvailable: 2",
+      "Ressources optimisées",
+      "Sondes HTTP pour service exposé",
+      "NetworkPolicy frontend->backend",
+      "securityContext runAsNonRoot",
+      "Rotation des clés tous les 90 jours"
+    ],
+    "requirements_unmapped": [
+      "Namespace 'ecommerce'",
+      "Composant PostgreSQL CrunchyData (3 instances, réplication synchrone, chiffrement, backups, 10GB) non défini.",
+      "Composant Grafana",
+      "Configuration KEDA (fenêtres temporelles 00h-06h:2, 09h-12h:10) absent de traffic_windows.",
+      "Composant Grafana (1 replica, port 3000, hôte dédié) non défini.",
+      "Règles d'Ingress pour 'api.mon-domaine.com' et 'monitoring.mon-domaine.com' non couvertes dans l'objet ingress.",
+      "Composant Prometheus",
+      "Composant Backend API Node.js (image, réplicas, secrets, HPA, KEDA, sidecar Envoy) non présent dans la structure principale.",
+      "Règles NetworkPolicy pour 'backend -> redis/postgres' non incluses dans la configuration réseau du frontend.",
+      "Composant Prometheus (1 replica, port 9090) non défini.",
+      "Composant Redis cache (image, réplicas, port, stockage 5GB) non défini dans un objet composant dédié.",
+      "Hôtes Ingress supplémentaires (api.mon-domaine.com, monitoring.mon-domaine.com)",
+      "Composant Backend API Node.js (et scaling KEDA 00h-06h:2, 09h-12h:10)",
+      "Namespace 'ecommerce' absent des champs structurés principaux.",
+      "Composant PostgreSQL CrunchyData",
+      "[EXTRACTION POTENTIELLEMENT MANQUÉE] Indices de contrainte transversale détectés dans le texte original (['chiffrement', 'encrypted']) mais aucune global_constraint n'a pu être extraite, même après une tentative dédiée avec indice explicite. Vérifiez manuellement si le texte contient une exigence de sécurité/conformité qui s'applique à plusieurs composants ou à toute l'application.",
+      "Sondes TCP pour services internes",
+      "PDB du backend (min: 3) manquant dans les contraintes.",
+      "Sondes TCP pour les services internes non configurées.",
+      "Règles NetworkPolicy backend->redis/postgres",
+      "Composant Redis cache"
+    ],
+    "repair_attempts": 2,
+    "self_check_passed": false
+  }
+}

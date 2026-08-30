@@ -14,7 +14,7 @@ class Settings:
     # à modèle égal (E6 - instrumentation homogène) : sans ça, Architecture
     # C serait comparée à B sur un modèle différent, ce qui biaiserait
     # latence/coût sans rapport avec le mérite architectural lui-même.
-    GEMMA_MODEL: str = os.getenv("LLM_MODEL", os.getenv("GEMMA_MODEL", "gemini-3.6-flash"))
+    GEMMA_MODEL: str = os.getenv("LLM_MODEL", os.getenv("GEMMA_MODEL", "gemma-4-31b-it"))
     AGENT1_MAX_REPAIR_ATTEMPTS: int = int(
         os.getenv("AGENT1_MAX_REPAIR_ATTEMPTS", "2")
     )

@@ -1,0 +1,48 @@
+{
+  "pipeline_latency_seconds": 122.537,
+  "total_latency_seconds": 122.537,
+  "llm_calls": {
+    "total_calls": 8,
+    "failed_calls": 0,
+    "total_latency_seconds": 118.038,
+    "average_latency_seconds": 14.755,
+    "tokens_known": true,
+    "total_prompt_tokens": 16832,
+    "total_completion_tokens": 6009,
+    "total_tokens": 22841,
+    "by_agent": {
+      "Agent 1 - Analyse (extraction)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 36.555,
+        "prompt_tokens": 5593,
+        "completion_tokens": 2141,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (self-check)": {
+        "calls": 3,
+        "failed_calls": 0,
+        "latency_seconds": 19.132,
+        "prompt_tokens": 5393,
+        "completion_tokens": 737,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation)": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 41.564,
+        "prompt_tokens": 3095,
+        "completion_tokens": 2734,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (contraintes globales)": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 20.787,
+        "prompt_tokens": 2751,
+        "completion_tokens": 397,
+        "tokens_known": true
+      }
+    }
+  }
+}

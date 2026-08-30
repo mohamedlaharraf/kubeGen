@@ -1,0 +1,183 @@
+{
+  "architecture_type": "microservices",
+  "namespace": "ecommerce",
+  "components": [
+    {
+      "component_name": "frontend",
+      "workload_type": "Deployment",
+      "image": "nginx:alpine",
+      "replicas": 3,
+      "labels": {
+        "app": "frontend",
+        "tier": "frontend"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 3000,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [
+        "backend"
+      ],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": {
+        "enabled": true,
+        "host": "shop.mon-domaine.com",
+        "path": "/",
+        "tls": false,
+        "tls_secret_name": null,
+        "ingress_class": null,
+        "api_style": "ingress",
+        "gateway_name": null,
+        "cert_manager_issuer": null,
+        "cert_manager_issuer_kind": "ClusterIssuer"
+      },
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    },
+    {
+      "component_name": "backend",
+      "workload_type": "Deployment",
+      "image": "node:18-alpine",
+      "replicas": 5,
+      "labels": {
+        "app": "backend",
+        "tier": "api"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [
+        "redis"
+      ],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    },
+    {
+      "component_name": "redis",
+      "workload_type": "Deployment",
+      "image": "redis:7-alpine",
+      "replicas": 1,
+      "labels": {
+        "app": "redis",
+        "tier": "cache"
+      },
+      "ports": [
+        {
+          "name": "redis",
+          "container_port": 6379,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "global_constraints": [],
+  "application_context": "Application e-commerce multi-composants (frontend React, API Node.js, cache Redis) avec exigences de réplication explicites.",
+  "raw_user_request": "Déploie une application e-commerce avec frontend React (3 replicas, port 3000, exposé sur shop.mon-domaine.com), backend API Node.js (5 replicas, port 8080), Redis cache (1 replica, port 6379), namespace ecommerce",
+  "ambiguities": [
+    {
+      "field": "components[0].image",
+      "question": "Quelle est l'image exacte à utiliser pour le frontend React ?",
+      "assumption_made": "Utilisation de l'image 'nginx:alpine' par défaut pour servir l'application React.",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[1].image",
+      "question": "Quelle est l'image exacte à utiliser pour l'API backend Node.js ?",
+      "assumption_made": "Utilisation de l'image 'node:18-alpine' par défaut.",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[2].image",
+      "question": "Quelle version exacte de Redis utiliser ?",
+      "assumption_made": "Utilisation de l'image 'redis:7-alpine'.",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déployer dans le namespace 'ecommerce'",
+      "Composant frontend React avec 3 répliques sur le port 3000",
+      "Exposition du frontend sur shop.mon-domaine.com",
+      "Composant backend API Node.js avec 5 répliques sur le port 8080",
+      "Composant Redis cache avec 1 réplique sur le port 6379"
+    ],
+    "requirements_mapped": [
+      "Déployer dans le namespace 'ecommerce'",
+      "Composant frontend React avec 3 répliques sur le port 3000",
+      "Exposition du frontend sur shop.mon-domaine.com",
+      "Composant backend API Node.js avec 5 répliques sur le port 8080",
+      "Composant Redis cache avec 1 réplique sur le port 6379"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 0,
+    "self_check_passed": true
+  }
+}
