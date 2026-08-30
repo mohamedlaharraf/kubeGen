@@ -1,0 +1,136 @@
+{
+  "pipeline_latency_seconds": 1047.191,
+  "total_latency_seconds": 1047.191,
+  "llm_calls": {
+    "total_calls": 21,
+    "failed_calls": 1,
+    "total_latency_seconds": 1252.366,
+    "average_latency_seconds": 59.636,
+    "tokens_known": true,
+    "total_prompt_tokens": 54392,
+    "total_completion_tokens": 16035,
+    "total_tokens": 70427,
+    "by_agent": {
+      "Agent 1 - Analyse (extraction)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 96.133,
+        "prompt_tokens": 5342,
+        "completion_tokens": 974,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (self-check)": {
+        "calls": 3,
+        "failed_calls": 0,
+        "latency_seconds": 138.474,
+        "prompt_tokens": 3309,
+        "completion_tokens": 250,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation)": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 197.41,
+        "prompt_tokens": 2308,
+        "completion_tokens": 1860,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (contraintes globales)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 20.681,
+        "prompt_tokens": 1084,
+        "completion_tokens": 11,
+        "tokens_known": true
+      },
+      "Agent 2 - Template": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 87.4,
+        "prompt_tokens": 6931,
+        "completion_tokens": 1153,
+        "tokens_known": true
+      },
+      "Agent 3 - Validation": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 58.711,
+        "prompt_tokens": 2814,
+        "completion_tokens": 914,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling": {
+        "calls": 2,
+        "failed_calls": 1,
+        "latency_seconds": 58.224,
+        "prompt_tokens": 2029,
+        "completion_tokens": 698,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 49.113,
+        "prompt_tokens": 1636,
+        "completion_tokens": 862,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 50.527,
+        "prompt_tokens": 1665,
+        "completion_tokens": 852,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 53.132,
+        "prompt_tokens": 4094,
+        "completion_tokens": 819,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 54.697,
+        "prompt_tokens": 3701,
+        "completion_tokens": 1007,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 59.591,
+        "prompt_tokens": 3730,
+        "completion_tokens": 1040,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Judge": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 54.566,
+        "prompt_tokens": 4065,
+        "completion_tokens": 900,
+        "tokens_known": true
+      },
+      "Agent 5 - Vérification finale": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 169.218,
+        "prompt_tokens": 9104,
+        "completion_tokens": 3183,
+        "tokens_known": true
+      },
+      "Réparation ciblée": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 104.49,
+        "prompt_tokens": 2580,
+        "completion_tokens": 1512,
+        "tokens_known": true
+      }
+    }
+  }
+}

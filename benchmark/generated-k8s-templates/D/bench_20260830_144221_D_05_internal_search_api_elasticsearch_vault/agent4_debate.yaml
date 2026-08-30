@@ -1,0 +1,232 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: search-api-sa
+  namespace: search
+  labels:
+    app: search-api
+    app.kubernetes.io/name: search-api
+    app.kubernetes.io/instance: search-api
+    app.kubernetes.io/version: '1.0'
+    app.kubernetes.io/part-of: search
+    app.kubernetes.io/managed-by: architecture-d
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app: search-api
+    app.kubernetes.io/name: search-api
+    app.kubernetes.io/instance: search-api
+    app.kubernetes.io/version: '1.0'
+    app.kubernetes.io/part-of: search
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  type: ClusterIP
+  selector:
+    app: search-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: search-api-netpol
+  namespace: search
+  labels:
+    app: search-api
+    app.kubernetes.io/name: search-api
+    app.kubernetes.io/instance: search-api
+    app.kubernetes.io/version: '1.0'
+    app.kubernetes.io/part-of: search
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  podSelector:
+    matchLabels:
+      app: search-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app: search-api
+    app.kubernetes.io/name: search-api
+    app.kubernetes.io/instance: search-api
+    app.kubernetes.io/version: '1.0'
+    app.kubernetes.io/part-of: search
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: search-api
+  template:
+    metadata:
+      labels:
+        app: search-api
+        app.kubernetes.io/name: search-api
+        app.kubernetes.io/instance: search-api
+        app.kubernetes.io/version: '1.0'
+        app.kubernetes.io/part-of: search
+        app.kubernetes.io/managed-by: architecture-d
+    spec:
+      serviceAccountName: search-api-sa
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: nodepool
+                operator: In
+                values:
+                - shared
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 50
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: search-api
+              topologyKey: "kubernetes.io/hostname"
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: search-api
+        image: myregistry/search:1.0
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "200m"
+            memory: "384Mi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      - name: vault-agent
+        image: hashicorp/vault-agent
+        resources:
+          requests:
+            cpu: "20m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search
+---
+manifest_yaml: "# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9rifi\xE9e par\
+  \ les contr\xF4les habituels du pipeline, \xE0 valider manuellement avant tout d\xE9\
+  ploiement.\napiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: elasticsearch-sa\n\
+  \  labels:\n    app: elasticsearch\n    app.kubernetes.io/name: elasticsearch\n\
+  \    app.kubernetes.io/instance: elasticsearch\n    app.kubernetes.io/version: \"\
+  unknown\"\n    app.kubernetes.io/part-of: \"default\"\n    app.kubernetes.io/managed-by:\
+  \ \"architecture-d\"\n---\n# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9\
+  rifi\xE9e par les contr\xF4les habituels du pipeline, \xE0 valider manuellement\
+  \ avant tout d\xE9ploiement.\napiVersion: elasticsearch.k8s.elastic.co/v1\nkind:\
+  \ Elasticsearch\nmetadata:\n  name: elasticsearch\n  labels:\n    app: elasticsearch\n\
+  \    app.kubernetes.io/name: elasticsearch\n    app.kubernetes.io/instance: elasticsearch\n\
+  \    app.kubernetes.io/version: \"unknown\"\n    app.kubernetes.io/part-of: \"default\"\
+  \n    app.kubernetes.io/managed-by: \"architecture-d\"\nspec:\n  version: 8.12.0\n\
+  \  nodeSets:\n    - name: default\n      count: 3\n      podTemplate:\n        spec:\n\
+  \          serviceAccountName: elasticsearch-sa\n          containers:\n       \
+  \     - name: elasticsearch\n              # Hardening de base appliqu\xE9 via podTemplate\n\
+  \              securityContext:\n                runAsNonRoot: true\n          \
+  \      allowPrivilegeEscalation: false\n                capabilities:\n        \
+  \          drop:\n                    - ALL\n                seccompProfile:\n \
+  \                 type: RuntimeDefault\n          # Application de la contrainte\
+  \ globale HashiCorp Vault\n          annotations:\n            vault.hashicorp.com/agent-inject:\
+  \ \"true\"\n            vault.hashicorp.com/role: \"elasticsearch\"\n          \
+  \  app.kubernetes.io/name: elasticsearch\n            app.kubernetes.io/instance:\
+  \ elasticsearch\n            app.kubernetes.io/version: \"unknown\"\n          \
+  \  app.kubernetes.io/part-of: \"default\"\n            app.kubernetes.io/managed-by:\
+  \ \"architecture-d\""
+fields_addressed:
+- component_name
+- 'workload_type: traduit en CR Elasticsearch (ECK)'
+- 'replicas: traduit en spec.nodeSets[0].count'
+- labels
+- "constraints: G\xE9r\xE9 par l'op\xE9rateur ECK appliqu\xE9"
+- "ports: aucun demand\xE9, rien \xE0 faire"
+- "env_vars: aucun demand\xE9, rien \xE0 faire"
+- "volumes: aucun demand\xE9, rien \xE0 faire"
+- "sidecars: aucun demand\xE9, rien \xE0 faire"
+- "depends_on: aucun demand\xE9, rien \xE0 faire"
+- "security_requirements: aucun sp\xE9cifique, hardening de base appliqu\xE9"
+- "observability_requirements: aucun demand\xE9, rien \xE0 faire"
+- "ingress: d\xE9sactiv\xE9, rien \xE0 faire"
+- "rbac: d\xE9sactiv\xE9, ServiceAccount cr\xE9\xE9 seul"
+- "service_mesh_routing: aucun demand\xE9, rien \xE0 faire"
+- "observability_style: annotations (non applicable sans port de m\xE9triques)"
+- 'cron_schedule: non applicable'
+- "config_maps: aucun demand\xE9, rien \xE0 faire"
+- "network_policy: restrict_egress=false, rien \xE0 faire"
+- "deployment_strategy: aucun demand\xE9, rien \xE0 faire"
+fields_left_open:
+- "energy_goals: revient \xE0 l'Agent 4"
+- "resource_hints: revient \xE0 l'Agent 4"
+- "traffic_windows: revient \xE0 l'Agent 4"
+security_requirements_addressed:
+- Application du hardening de base (runAsNonRoot, allowPrivilegeEscalation, capabilities.drop)
+  dans le podTemplate
+- "Int\xE9gration de la contrainte globale HashiCorp Vault via annotations d'injection"
+security_requirements_left_open: []
+observability_requirements_addressed: []
+observability_requirements_left_open: []
+ingress_addressed:
+- ingress.enabled=false
+ingress_left_open: []
+rbac_addressed:
+- "ServiceAccount cr\xE9\xE9"
+- rbac.enabled=false (pas de Role/RoleBinding)
+rbac_left_open: []
+warnings:
+- "app.kubernetes.io/version='unknown' : image sans tag explicite, \xE0 corriger avant\
+  \ d\xE9ploiement."
+- "Image non fournie pour le composant elasticsearch, utilisation d'une version par\
+  \ d\xE9faut (8.12.0) pour le CR ECK."
+- Namespace non fourni dans la spec, utilisation de 'default' pour le label app.kubernetes.io/part-of.
+- "L'utilisation de l'op\xE9rateur ECK (Elastic Cloud on Kubernetes) est une g\xE9\
+  n\xE9ration libre bas\xE9e sur les contraintes, \xE0 valider manuellement."
+- "L'injection Vault est configur\xE9e via podTemplate dans le CR Elasticsearch selon\
+  \ la contrainte globale."

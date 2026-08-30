@@ -28,6 +28,7 @@ du quota et coûte potentiellement de l'argent, voir benchmark/pricing.py.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from datetime import datetime
@@ -51,6 +52,22 @@ def load_scenarios(scenarios_dir: Path, only_ids: set[str] | None) -> list[tuple
         scenarios.append((scenario_id, path.read_text(encoding="utf-8")))
     return scenarios
 
+def load_existing_records(json_path: Path) -> dict[tuple[str, str], dict]:
+    """
+    Charge la télémétrie déjà présente dans `json_path`, indexée par
+    (architecture_id, scenario_id) -- permet de FUSIONNER plutôt
+    qu'écraser quand vous lancez les scénarios un par un au fil de
+    plusieurs invocations.
+    """
+    if not json_path.exists():
+        return {}
+    try:
+        existing = json.loads(json_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"[avertissement] impossible de lire {json_path} ({e}) -- "
+              f"on repart d'une télémétrie vide pour ce dossier de sortie.")
+        return {}
+    return {(r["architecture_id"], r["scenario_id"]): r for r in existing}
 
 def main():
     parser = argparse.ArgumentParser(description="Benchmark comparatif des architectures kubeGen.")
@@ -91,10 +108,15 @@ def main():
     print(f"Benchmark {run_batch_id} : {len(arch_ids)} architecture(s) x {len(scenarios)} scénario(s) "
           f"= {len(arch_ids) * len(scenarios)} runs.\n")
 
-    records: list[dict] = []
     json_path = output_dir / "benchmark_telemetry.json"
     csv_path = output_dir / "benchmark_telemetry.csv"
     md_path = output_dir / "benchmark_report.md"
+
+    records_by_key = load_existing_records(json_path)
+    if records_by_key:
+        print(f"{len(records_by_key)} run(s) déjà présent(s) dans {json_path} -- "
+              f"les nouveaux runs les complètent (même architecture+scénario = "
+              f"remplacé, le reste est conservé).\n")
 
     for arch_id in arch_ids:
         adapter_cls = ARCHITECTURE_REGISTRY[arch_id]
@@ -112,7 +134,7 @@ def main():
             print(f"  [{scenario_id}] ... ", end="", flush=True)
             run_result = adapter.run(requirement, scenario_id, run_name)
             record = build_record(run_result)
-            records.append(record)
+            records_by_key[(record["architecture_id"], scenario_id)] = record
 
             elapsed = round(time.time() - t0, 1)
             if run_result.error:
@@ -124,14 +146,15 @@ def main():
 
             # Écriture incrémentale : un crash au run N/M ne fait pas perdre
             # la télémétrie des runs 1..N-1.
-            write_json(records, json_path)
+            write_json(list(records_by_key.values()), json_path)
 
         print()
 
-    if not records:
+    if not records_by_key:
         print("[erreur] aucun run n'a produit de résultat exploitable.", file=sys.stderr)
         sys.exit(1)
 
+    records = list(records_by_key.values())
     write_json(records, json_path)
     write_csv(records, csv_path)
     write_markdown_report(records, md_path)

@@ -1,0 +1,128 @@
+{
+  "transcripts": {
+    "search-api": [
+      {
+        "round_number": 1,
+        "proposals": [
+          {
+            "strategy": "consolidation",
+            "component_name": "search-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: search-api-netpol\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: search-api\n  policyTypes:\n  - Ingress\n  ingress:\n  - from:\n    - podSelector: {}\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n        app.kubernetes.io/name: search-api\n        app.kubernetes.io/instance: search-api\n        app.kubernetes.io/version: '1.0'\n        app.kubernetes.io/part-of: search\n        app.kubernetes.io/managed-by: architecture-d\n    spec:\n      serviceAccountName: search-api-sa\n      affinity:\n        nodeAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            preference:\n              matchExpressions:\n              - key: nodepool\n                operator: In\n                values:\n                - shared\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 50\n            podAffinityTerm:\n              labelSelector:\n                matchLabels:\n                  app: search-api\n              topologyKey: \"kubernetes.io/hostname\"\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        ports:\n        - containerPort: 8080\n          name: http\n        resources:\n          requests:\n            cpu: \"100m\"\n            memory: \"128Mi\"\n          limits:\n            cpu: \"500m\"\n            memory: \"256Mi\"\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n      - name: vault-agent\n        image: hashicorp/vault-agent\n        resources:\n          requests:\n            cpu: \"20m\"\n            memory: \"32Mi\"\n          limits:\n            cpu: \"100m\"\n            memory: \"128Mi\"\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: false\n          capabilities:\n            drop:\n            - ALL",
+            "rationale": "Maintien de la stratégie de consolidation maximale : affinité vers pool partagé et regroupement des pods. Intégration des probes TCP de la stratégie Sizing pour réduire le churn énergétique. Adoption des requests minimales du sidecar vault-agent pour gagner en densité, tout en refusant l'augmentation de la request mémoire du container principal pour éviter la fragmentation du cluster.",
+            "estimated_energy_savings_pct": 15.0,
+            "performance_risk": "medium",
+            "actions": [
+              "Application de l'affinité nodale 'shared'",
+              "Regroupement des pods via podAffinity",
+              "Réduction des requests ressources pour maximiser le bin-packing",
+              "Ajout de probes TCP pour la stabilité"
+            ],
+            "warnings": [
+              "Le label 'nodepool: shared' doit être configuré sur les nœuds du cluster",
+              "La request mémoire basse (128Mi) nécessite une surveillance pour éviter les OOMKills si le profil 'Internal API' s'avère plus gourmand"
+            ]
+          },
+          {
+            "strategy": "sizing",
+            "component_name": "search-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: search-api-netpol\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: search-api\n  policyTypes:\n  - Ingress\n  ingress:\n  - from:\n    - podSelector: {}\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n        app.kubernetes.io/name: search-api\n        app.kubernetes.io/instance: search-api\n        app.kubernetes.io/version: '1.0'\n        app.kubernetes.io/part-of: search\n        app.kubernetes.io/managed-by: architecture-d\n    spec:\n      serviceAccountName: search-api-sa\n      affinity:\n        nodeAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            preference:\n              matchExpressions:\n              - key: nodepool\n                operator: In\n                values:\n                - shared\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 50\n            podAffinityTerm:\n              labelSelector:\n                matchLabels:\n                  app: search-api\n              topologyKey: \"kubernetes.io/hostname\"\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        ports:\n        - containerPort: 8080\n          name: http\n        resources:\n          requests:\n            cpu: \"100m\"\n            memory: \"256Mi\"\n          limits:\n            cpu: \"200m\"\n            memory: \"384Mi\"\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n      - name: vault-agent\n        image: hashicorp/vault-agent\n        resources:\n          requests:\n            cpu: \"20m\"\n            memory: \"32Mi\"\n          limits:\n            cpu: \"50m\"\n            memory: \"64Mi\"\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: false\n          capabilities:\n            drop:\n            - ALL",
+            "rationale": "Maintien du calibrage strict : CPU 100m/200m (ratio 2x) et Mem 256Mi/384Mi (ratio 1.5x) pour éviter le gaspillage tout en garantissant la stabilité. Correction du risque 'BestEffort' introduit par la stratégie autoscaling et réduction des limites excessives de la stratégie consolidation. Intégration des affinités de la stratégie consolidation car elles sont compatibles avec un sizing serré. Probes maintenues en tcpSocket pour éviter les redémarrages énergivores.",
+            "estimated_energy_savings_pct": 15.0,
+            "performance_risk": "low",
+            "actions": [
+              "Restauration des requests/limits calibrées",
+              "Intégration des affinités nodales et de pods pour favoriser la compaction",
+              "Maintien des probes tcpSocket"
+            ],
+            "warnings": [
+              "Le ratio mémoire est serré (1.5x) ; une surveillance des événements OOMKill est recommandée si la charge de données search-api augmente."
+            ]
+          },
+          {
+            "strategy": "autoscaling",
+            "component_name": "search-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: search-api-netpol\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: search-api\n  policyTypes:\n  - Ingress\n  ingress:\n  - from:\n    - podSelector: {}\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n        app.kubernetes.io/name: search-api\n        app.kubernetes.io/instance: search-api\n        app.kubernetes.io/version: '1.0'\n        app.kubernetes.io/part-of: search\n        app.kubernetes.io/managed-by: architecture-d\n    spec:\n      serviceAccountName: search-api-sa\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        ports:\n        - containerPort: 8080\n          name: http\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n      - name: vault-agent\n        image: hashicorp/vault-agent\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: false\n          capabilities:\n            drop:\n            - ALL",
+            "rationale": "Aucun besoin de scaling n'a été identifié : les champs traffic_windows et energy_goals sont vides, et l'application_context ne mentionne aucune variabilité de charge ou criticité justifiant un autoscaling. Avec 2 réplicas, le composant assure déjà une haute disponibilité minimale. L'ajout d'un HPA sans données de trafic serait une source de complexité inutile et consommerait des ressources de contrôle sans gain énergétique prouvé.",
+            "estimated_energy_savings_pct": null,
+            "performance_risk": "low",
+            "actions": [
+              "Maintien d'un nombre de réplicas statique (2) pour éviter la surcharge opérationnelle d'un mécanisme d'autoscaling non justifié par le profil de charge."
+            ],
+            "warnings": []
+          }
+        ],
+        "critiques": [
+          {
+            "from_strategy": "consolidation",
+            "target_strategy": "sizing",
+            "component_name": "search-api",
+            "comment": "Il existe un conflit sur la request mémoire de 'search-api' (256Mi vs 128Mi). Une request trop élevée est la cause première de la fragmentation des nœuds. Je rejette ce sur-dimensionnement pour maintenir une densité maximale. En revanche, j'accepte les requests plus basses pour le sidecar vault-agent et l'ajout des probes TCP qui stabilisent le pod et évitent des redémarrages énergivores.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "consolidation",
+            "target_strategy": "autoscaling",
+            "component_name": "search-api",
+            "comment": "Aucun conflit. Le maintien de 2 réplicas fixes est parfaitement compatible avec une stratégie de consolidation et de placement dense.",
+            "agrees": true
+          },
+          {
+            "from_strategy": "sizing",
+            "target_strategy": "consolidation",
+            "component_name": "search-api",
+            "comment": "Le ratio CPU limit/request est trop large (5x), ce qui est un anti-pattern de gaspillage. La request mémoire (128Mi) est trop basse et risque de provoquer des OOMKills fréquents, tandis que le sidecar vault-agent est sur-dimensionné par rapport à son usage réel.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "sizing",
+            "target_strategy": "autoscaling",
+            "component_name": "search-api",
+            "comment": "La suppression totale des requests et limits est critique : elle place le pod en QoS 'BestEffort', augmentant drastiquement le risque d'éviction et d'instabilité, ce qui est l'opposé d'un dimensionnement énergétique maîtrisé.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "autoscaling",
+            "target_strategy": "consolidation",
+            "component_name": "search-api",
+            "comment": "Aucun conflit identifié. L'utilisation d'affinités 'preferred' (souples) pour le regroupement des pods n'entrave pas la capacité de scaling futur et ne contredit pas le maintien actuel de 2 réplicas.",
+            "agrees": true
+          },
+          {
+            "from_strategy": "autoscaling",
+            "target_strategy": "sizing",
+            "component_name": "search-api",
+            "comment": "Aucun conflit identifié. La définition précise des ressources et l'ajout de probes de santé sont complémentaires à une stratégie de scaling et n'impactent pas le nombre de réplicas.",
+            "agrees": true
+          }
+        ]
+      }
+    ]
+  },
+  "judge_verdicts": [
+    {
+      "component_name": "search-api",
+      "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: search-api-sa\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: search-api\n  ports:\n  - name: http\n    port: 8080\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: search-api-netpol\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: search-api\n  policyTypes:\n  - Ingress\n  ingress:\n  - from:\n    - podSelector: {}\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: search-api\n  namespace: search\n  labels:\n    app: search-api\n    app.kubernetes.io/name: search-api\n    app.kubernetes.io/instance: search-api\n    app.kubernetes.io/version: '1.0'\n    app.kubernetes.io/part-of: search\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: search-api\n  template:\n    metadata:\n      labels:\n        app: search-api\n        app.kubernetes.io/name: search-api\n        app.kubernetes.io/instance: search-api\n        app.kubernetes.io/version: '1.0'\n        app.kubernetes.io/part-of: search\n        app.kubernetes.io/managed-by: architecture-d\n    spec:\n      serviceAccountName: search-api-sa\n      affinity:\n        nodeAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            preference:\n              matchExpressions:\n              - key: nodepool\n                operator: In\n                values:\n                - shared\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 50\n            podAffinityTerm:\n              labelSelector:\n                matchLabels:\n                  app: search-api\n              topologyKey: \"kubernetes.io/hostname\"\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n      - name: search-api\n        image: myregistry/search:1.0\n        ports:\n        - containerPort: 8080\n          name: http\n        resources:\n          requests:\n            cpu: \"100m\"\n            memory: \"256Mi\"\n          limits:\n            cpu: \"200m\"\n            memory: \"384Mi\"\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n      - name: vault-agent\n        image: hashicorp/vault-agent\n        resources:\n          requests:\n            cpu: \"20m\"\n            memory: \"32Mi\"\n          limits:\n            cpu: \"50m\"\n            memory: \"64Mi\"\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: false\n          capabilities:\n            drop:\n            - ALL",
+      "reasoning": "Le verdict fusionne les apports complémentaires des trois stratégies. 1) Ressources : J'ai tranché le conflit entre Consolidation et Sizing en faveur de Sizing pour le container 'search-api'. Bien que Consolidation propose une request mémoire plus basse (128Mi) pour augmenter la densité, le risque d'OOMKill pour une API de recherche est jugé trop élevé. Sizing propose un ratio limit/request plus sain (1.5x pour la mémoire, 2x pour le CPU), évitant le gaspillage des limites excessives de Consolidation (500m CPU). Pour le sidecar 'vault-agent', les limites de Sizing sont retenues car plus précises. 2) Placement : Les affinités de Consolidation (nodeAffinity vers pool shared et podAffinity pour le regroupement) sont conservées car elles sont compatibles avec le sizing et optimisent l'empreinte énergétique globale. 3) Santé : Les probes TCP proposées par Sizing et Consolidation sont intégrées pour stabiliser le workload. 4) Scaling : La décision de l'agent Autoscaling de ne pas implémenter de HPA est validée, car l'absence de données de trafic et le maintien de 2 réplicas assurent un compromis stabilité/énergie optimal sans complexité inutile.",
+      "strategy_scores": {
+        "consolidation": 8.0,
+        "sizing": 9.0,
+        "autoscaling": 7.0
+      },
+      "chosen_elements": {
+        "resources": "sizing",
+        "affinity": "consolidation",
+        "probes": "sizing",
+        "replicas": "autoscaling"
+      },
+      "fields_addressed": [
+        "resources",
+        "affinity",
+        "livenessProbe",
+        "readinessProbe",
+        "replicas"
+      ],
+      "fields_left_open": [],
+      "warnings": []
+    }
+  ]
+}

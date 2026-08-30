@@ -14,33 +14,79 @@ une moyenne pondérée normalisée sur les seuls critères applicables,
 ramenée sur 100.
 
 Ce n'est PAS une vérité absolue -- c'est une rubrique déclarée et
-reproductible, documentée ici pour que le rapport final puisse citer
-précisément ce qui est mesuré (et ses limites) plutôt que de présenter
-un chiffre opaque.
+reproductible, avec des poids dérivés par AHP (Analytic Hierarchy
+Process, voir benchmark/ahp.py) à partir d'une matrice de comparaisons
+par paires documentée et vérifiée cohérente (CR < 0.10), plutôt que
+choisis à la main. Documentée ici pour que le rapport final puisse citer
+précisément ce qui est mesuré, comment les poids ont été obtenus, et les
+limites de la méthode -- plutôt que de présenter un chiffre opaque.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 from .validators.k8s_validate import POD_TEMPLATE_KINDS, WORKLOAD_KINDS, _pod_template
+from .ahp import compute_weights
 
 
 @dataclass
 class EnergyScoreResult:
     score: float | None              # /100, None si aucun critère applicable
     breakdown: dict[str, float | None] = field(default_factory=dict)  # nom -> fraction (0..1) ou None si non-applicable
-    weights: dict[str, int] = field(default_factory=dict)
+    weights: dict[str, float] = field(default_factory=dict)
 
 
-# Poids relatifs (somme = 100 si TOUS les critères sont applicables ;
-# sinon normalisation sur le sous-ensemble applicable, voir score()).
-_WEIGHTS = {
-    "resource_requests_limits": 40,   # right-sizing : le levier énergétique le plus direct
-    "autoscaling": 25,                # HPA / KEDA ScaledObject -> pas de sur-provisionnement permanent
-    "node_scheduling_efficiency": 20, # affinity / nodeSelector / topologySpreadConstraints
-    "disruption_budget": 10,          # évite le sur-provisionnement "de sécurité" ad hoc
-    "probes": 5,                      # évite de garder des pods zombies qui consomment des ressources
-}
+# ---------------------------------------------------------------------------
+# Poids DÉRIVÉS PAR AHP (Analytic Hierarchy Process), pas choisis à la main.
+#
+# Matrice de comparaisons par paires (échelle de Saaty 1-9) : M[i][j] =
+# combien le critère i est jugé plus important que j pour l'EFFICACITÉ
+# ÉNERGÉTIQUE d'un manifeste Kubernetes. Justification résumée par ligne :
+#
+# - resource_requests_limits (sizing) : le levier le plus DIRECT --
+#   c'est littéralement la quantité de ressources réservée 24/7.
+#   Nettement plus important que PDB (5, sans lien avec l'énergie) et
+#   probes (4, lien indirect via les pods zombies) ; modérément plus
+#   important que node_scheduling (3, qui affecte le packing mais pas la
+#   quantité totale réservée) et qu'autoscaling (2, qui n'a d'effet que
+#   si la charge varie réellement).
+# - autoscaling : réduit le sur-provisionnement dans le TEMPS (contexte
+#   de charge variable) là où le sizing le réduit dans l'ESPACE (une
+#   allocation figée) -- deuxième levier le plus direct.
+# - node_scheduling_efficiency : améliore la densité de bin-packing
+#   (moins de nœuds actifs à ressources égales), mais n'affecte pas la
+#   quantité de ressources demandée elle-même -- effet réel mais indirect.
+# - disruption_budget (PDB) : mécanisme de DISPONIBILITÉ, sans lien causal
+#   direct avec la consommation énergétique -- inclus dans la rubrique
+#   pour cohérence avec le reste du projet (évite le sur-provisionnement
+#   "de sécurité" ad hoc), mais légitimement le critère le moins pertinent.
+# - probes : évite des pods "zombies" qui continuent de consommer des
+#   ressources sans servir -- effet réel mais marginal comparé au sizing.
+#
+# Ratio de cohérence CR = 0.0153 (<< seuil de 0.10) : les jugements
+# ci-dessus ne se contredisent pas entre eux -- voir benchmark/ahp.py
+# pour la méthode de calcul complète.
+# ---------------------------------------------------------------------------
+_AHP_LABELS = [
+    "resource_requests_limits", "autoscaling",
+    "node_scheduling_efficiency", "disruption_budget", "probes",
+]
+_AHP_MATRIX = [
+    #                        sizing  autosc  node_sched  pdb   probes
+    [1,     2,    3,    5,    4],     # resource_requests_limits
+    [1/2,   1,    2,    4,    3],     # autoscaling
+    [1/3,   1/2,  1,    3,    2],     # node_scheduling_efficiency
+    [1/5,   1/4,  1/3,  1,    1/2],   # disruption_budget
+    [1/4,   1/3,  1/2,  2,    1],     # probes
+]
+_AHP_RESULT = compute_weights(_AHP_LABELS, _AHP_MATRIX)
+assert _AHP_RESULT.is_consistent, (
+    f"Matrice AHP des critères énergie incohérente (CR={_AHP_RESULT.consistency_ratio} "
+    f">= {0.10}) -- revoir les jugements de comparaison avant de faire confiance à ces poids."
+)
+# Poids en /100 (plutôt qu'en fractions sommant à 1) pour rester lisible
+# dans les rapports et compatible avec l'échelle /100 du score final.
+_WEIGHTS = {k: round(v * 100, 1) for k, v in _AHP_RESULT.weights.items()}
 
 
 def _all_containers(docs: list[dict]) -> list[dict]:

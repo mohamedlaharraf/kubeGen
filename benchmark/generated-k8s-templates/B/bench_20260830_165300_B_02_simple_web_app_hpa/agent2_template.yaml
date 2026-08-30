@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkout-api-sa
+  namespace: payments
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: payments
+  labels:
+    app: checkout-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        app: checkout-api
+    spec:
+      serviceAccountName: checkout-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: checkout-api
+          image: myregistry/checkout:1.4.2
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: checkout-db-secret
+                  key: DB_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-api
+  namespace: payments
+spec:
+  type: ClusterIP
+  selector:
+    app: checkout-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+{
+  "manifest_yaml": "# ℹ️ Exigence hors périmètre Kubernetes (aucune ressource K8s correspondante) : Application: API de paiement — à tracer par un autre moyen (documentation, label, process d'équipe).",
+  "fields_addressed": [
+    "non-standard requirements"
+  ],
+  "fields_left_open": [],
+  "security_requirements_addressed": [],
+  "security_requirements_left_open": [],
+  "observability_requirements_addressed": [],
+  "observability_requirements_left_open": [],
+  "ingress_addressed": [],
+  "ingress_left_open": [],
+  "rbac_addressed": [],
+  "rbac_left_open": [],
+  "warnings": [
+    "Aucun ServiceComponent fourni ; seul le traitement de l'exigence non standard a été effectué."
+  ]
+}
+---
+{
+  "manifest_yaml": "# ℹ️ Exigence hors périmètre Kubernetes (aucune ressource K8s correspondante) : Runtime: Node.js — à tracer par un autre moyen (documentation, label, process d'équipe).",
+  "fields_addressed": [
+    "non-standard requirements"
+  ],
+  "fields_left_open": [
+    "ServiceComponent JSON (non fourni)"
+  ],
+  "security_requirements_addressed": [],
+  "security_requirements_left_open": [],
+  "observability_requirements_addressed": [],
+  "observability_requirements_left_open": [],
+  "ingress_addressed": [],
+  "ingress_left_open": [],
+  "rbac_addressed": [],
+  "rbac_left_open": [],
+  "warnings": [
+    "Aucun ServiceComponent JSON fourni. Seule l'exigence non standard a été traitée."
+  ]
+}

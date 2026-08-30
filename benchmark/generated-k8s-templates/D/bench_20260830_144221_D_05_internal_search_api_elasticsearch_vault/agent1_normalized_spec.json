@@ -1,0 +1,124 @@
+{
+  "architecture_type": "single",
+  "namespace": "search",
+  "components": [
+    {
+      "component_name": "search-api",
+      "workload_type": "Deployment",
+      "image": "myregistry/search:1.0",
+      "replicas": 2,
+      "labels": {
+        "app": "search-api"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [
+        {
+          "name": "vault-agent",
+          "image": "hashicorp/vault-agent",
+          "purpose": "Credential injection via Vault Agent Injector",
+          "ports": [],
+          "env_vars": [],
+          "resource_hints": null
+        }
+      ],
+      "depends_on": [
+        "elasticsearch"
+      ],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [
+        "Exposition uniquement interne (pas d'accès public)",
+        "Injection automatique des credentials via HashiCorp Vault"
+      ],
+      "observability_requirements": [],
+      "ingress": {
+        "enabled": false,
+        "host": null,
+        "path": "/",
+        "tls": false,
+        "tls_secret_name": null,
+        "ingress_class": null,
+        "api_style": "ingress",
+        "gateway_name": null,
+        "cert_manager_issuer": null,
+        "cert_manager_issuer_kind": "ClusterIssuer"
+      },
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": {
+        "restrict_egress": false,
+        "allowed_egress_targets": [],
+        "allowed_ingress_sources": []
+      },
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "{'component_name': 'elasticsearch', 'workload_type': 'Elasticsearch', 'image': None, 'replicas': 3, 'labels': {'app': 'elasticsearch'}, 'ports': [], 'env_vars': [], 'volumes': [], 'sidecars': [], 'depends_on': [], 'energy_goals': [], 'resource_hints': None, 'traffic_windows': [], 'constraints': [\"Géré par l'opérateur ECK (Elastic Cloud on Kubernetes)\"], 'security_requirements': [], 'observability_requirements': [], 'ingress': {'enabled': False, 'host': None, 'path': '/', 'tls': False, 'tls_secret_name': None, 'ingress_class': None, 'api_style': 'ingress', 'gateway_name': None, 'cert_manager_issuer': None, 'cert_manager_issuer_kind': None}, 'rbac': {'enabled': False, 'rules_description': []}, 'service_mesh_routing': [], 'observability_style': 'annotations', 'cron_schedule': None, 'config_maps': [], 'network_policy': {'restrict_egress': False, 'allowed_egress_targets': [], 'allowed_ingress_sources': []}, 'deployment_strategy': None}",
+      "suggested_kind": null
+    }
+  ],
+  "global_constraints": [
+    {
+      "text": "authentification gérée via HashiCorp Vault pour injecter les credentials automatiquement dans les pods",
+      "scope": "all_components",
+      "applies_to": [],
+      "category": "security"
+    }
+  ],
+  "application_context": "API de recherche interne dépendant d'un cluster Elasticsearch géré. Trafic non spécifié, exposition restreinte au cluster, criticité non définie.",
+  "raw_user_request": "Déploie une API de recherche \"search-api\" (image myregistry/search:1.0),\nnamespace \"search\", 2 réplicas, port 8080 en HTTP, exposée uniquement en\ninterne.\n\nElle a besoin d'un cluster Elasticsearch géré par l'opérateur ECK (Elastic\nCloud on Kubernetes) avec 3 nœuds de données et de l'authentification\ngérée via HashiCorp Vault pour injecter les credentials automatiquement\ndans les pods (Vault Agent Injector).",
+  "ambiguities": [
+    {
+      "field": "components[0].sidecars[0].image",
+      "question": "L'image exacte du Vault Agent Injector n'est pas spécifiée",
+      "assumption_made": "Utilisation de l'image standard hashicorp/vault-agent",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "API search-api",
+      "Image myregistry/search:1.0",
+      "Namespace search",
+      "2 replicas",
+      "Port 8080 HTTP",
+      "Exposition interne uniquement",
+      "Cluster Elasticsearch via opérateur ECK (3 nœuds)",
+      "Injection credentials via HashiCorp Vault Agent Injector"
+    ],
+    "requirements_mapped": [
+      "API search-api",
+      "Image myregistry/search:1.0",
+      "Namespace search",
+      "2 replicas",
+      "Port 8080 HTTP",
+      "Exposition interne uniquement",
+      "Injection credentials via HashiCorp Vault Agent Injector",
+      "Cluster Elasticsearch via opérateur ECK (3 nœuds)"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 1,
+    "self_check_passed": true
+  }
+}

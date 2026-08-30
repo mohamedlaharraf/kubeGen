@@ -1,0 +1,156 @@
+{
+  "architecture_type": "single",
+  "namespace": "payments",
+  "components": [
+    {
+      "component_name": "checkout-api",
+      "workload_type": "Deployment",
+      "image": "myregistry/checkout:1.4.2",
+      "replicas": 3,
+      "labels": {
+        "app": "checkout-api"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [
+        {
+          "name": "NODE_ENV",
+          "value": "production",
+          "from_secret": null,
+          "from_configmap": null,
+          "secret_key": null,
+          "configmap_key": null
+        },
+        {
+          "name": "DB_PASSWORD",
+          "value": null,
+          "from_secret": "checkout-db-secret",
+          "from_configmap": null,
+          "secret_key": "DB_PASSWORD",
+          "configmap_key": null
+        }
+      ],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [
+        "économiser de l'énergie/coût aux heures creuses"
+      ],
+      "resource_hints": "minimum de 2 réplicas et un maximum de 8",
+      "traffic_windows": [
+        {
+          "start_time": "00:00",
+          "end_time": "06:00",
+          "level": "low",
+          "timezone": null,
+          "target_replicas_hint": 2
+        },
+        {
+          "start_time": "09:00",
+          "end_time": "12:00",
+          "level": "high",
+          "timezone": null,
+          "target_replicas_hint": 8
+        }
+      ],
+      "constraints": [
+        "Scaling automatique (min 2, max 8)",
+        "Pas de stockage persistant nécessaire"
+      ],
+      "security_requirements": [
+        "La sécurité est primordiale"
+      ],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "{'requirement': 'Application: API de paiement', 'suggested_kind': 'description'}",
+      "suggested_kind": "description"
+    },
+    {
+      "text": "{'requirement': 'Runtime: Node.js', 'suggested_kind': 'runtime'}",
+      "suggested_kind": "runtime"
+    }
+  ],
+  "raw_user_request": "Déploie une API de paiement Node.js appelée \"checkout-api\", image myregistry/checkout:1.4.2, namespace \"payments\". Elle doit tourner en 3 réplicas, exposer le port 8080 en HTTP. Elle a besoin d'une variable d'environnement NODE_ENV=production et d'un mot de passe base de données DB_PASSWORD à lire depuis le secret \"checkout-db-secret\". Le trafic est très faible la nuit (entre minuit et 6h) et très élevé entre 9h et midi : je veux que ça scale automatiquement pour économiser de l'énergie/coût aux heures creuses, avec un minimum de 2 réplicas et un maximum de 8. Pas de stockage persistant nécessaire. La sécurité est primordiale.",
+  "ambiguities": [
+    {
+      "field": "components[0].workload_type",
+      "question": "Le type de workload n'est pas spécifié, s'agit-il d'un Deployment ?",
+      "assumption_made": "Deployment",
+      "confidence": "high"
+    },
+    {
+      "field": "components[0].env_vars[1].secret_key",
+      "question": "La clé exacte à l'intérieur du secret 'checkout-db-secret' n'est pas précisée.",
+      "assumption_made": "DB_PASSWORD",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[0].ingress",
+      "question": "L'utilisateur demande d'exposer le port 8080, mais ne mentionne pas d'accès externe (DNS, HTTPS).",
+      "assumption_made": "Exposition via Service interne uniquement, pas d'Ingress",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Nom de l'app: checkout-api",
+      "Image: myregistry/checkout:1.4.2",
+      "Namespace: payments",
+      "Réplicas: 3",
+      "Port: 8080 HTTP",
+      "Env: NODE_ENV=production",
+      "Env: DB_PASSWORD via secret checkout-db-secret",
+      "Trafic faible: 00:00-06:00",
+      "Trafic élevé: 09:00-12:00",
+      "Objectif: économie énergie/coût",
+      "Scaling: min 2, max 8",
+      "Stockage: aucun",
+      "Sécurité: primordiale",
+      "Runtime: Node.js",
+      "Type: API de paiement"
+    ],
+    "requirements_mapped": [
+      "Nom de l'app: checkout-api",
+      "Image: myregistry/checkout:1.4.2",
+      "Namespace: payments",
+      "Réplicas: 3",
+      "Port: 8080 HTTP",
+      "Env: NODE_ENV=production",
+      "Env: DB_PASSWORD via secret checkout-db-secret",
+      "Trafic faible: 00:00-06:00",
+      "Trafic élevé: 09:00-12:00",
+      "Objectif: économie énergie/coût",
+      "Scaling: min 2, max 8",
+      "Stockage: aucun",
+      "Sécurité: primordiale"
+    ],
+    "requirements_unmapped": [
+      "Runtime: Node.js",
+      "Type: API de paiement"
+    ],
+    "repair_attempts": 1,
+    "self_check_passed": true
+  }
+}

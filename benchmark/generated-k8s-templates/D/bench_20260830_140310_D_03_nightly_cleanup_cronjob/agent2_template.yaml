@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ops
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: log-cleanup-sa
+  namespace: ops
+  labels:
+    app: log-cleanup
+    app.kubernetes.io/name: log-cleanup
+    app.kubernetes.io/instance: log-cleanup
+    app.kubernetes.io/version: "1.0"
+    app.kubernetes.io/part-of: ops
+    app.kubernetes.io/managed-by: architecture-d
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-logs
+  namespace: ops
+  labels:
+    app: log-cleanup
+    app.kubernetes.io/name: log-cleanup
+    app.kubernetes.io/instance: log-cleanup
+    app.kubernetes.io/version: "1.0"
+    app.kubernetes.io/part-of: ops
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: log-cleanup
+  namespace: ops
+  labels:
+    app: log-cleanup
+    app.kubernetes.io/name: log-cleanup
+    app.kubernetes.io/instance: log-cleanup
+    app.kubernetes.io/version: "1.0"
+    app.kubernetes.io/part-of: ops
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: log-cleanup
+            app.kubernetes.io/name: log-cleanup
+            app.kubernetes.io/instance: log-cleanup
+            app.kubernetes.io/version: "1.0"
+            app.kubernetes.io/part-of: ops
+            app.kubernetes.io/managed-by: architecture-d
+        spec:
+          serviceAccountName: log-cleanup-sa
+          containers:
+            - name: log-cleanup
+              image: myregistry/cleanup-tool:1.0
+              env:
+                - name: LOG_RETENTION_DAYS
+                  value: "30"
+              volumeMounts:
+                - name: shared-logs
+                  mountPath: /logs
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities:
+                  drop:
+                    - ALL
+                seccompProfile:
+                  type: RuntimeDefault
+          volumes:
+            - name: shared-logs
+              persistentVolumeClaim:
+                claimName: shared-logs
+          restartPolicy: OnFailure

@@ -1,0 +1,152 @@
+{
+  "pipeline_latency_seconds": 1516.374,
+  "total_latency_seconds": 1516.374,
+  "llm_calls": {
+    "total_calls": 21,
+    "failed_calls": 0,
+    "total_latency_seconds": 1794.823,
+    "average_latency_seconds": 85.468,
+    "tokens_known": true,
+    "total_prompt_tokens": 80609,
+    "total_completion_tokens": 29123,
+    "total_tokens": 109732,
+    "by_agent": {
+      "Agent 1 - Analyse (extraction)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 69.438,
+        "prompt_tokens": 5359,
+        "completion_tokens": 1269,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (self-check)": {
+        "calls": 3,
+        "failed_calls": 0,
+        "latency_seconds": 154.848,
+        "prompt_tokens": 4433,
+        "completion_tokens": 141,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation)": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 220.98,
+        "prompt_tokens": 2838,
+        "completion_tokens": 2991,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (contraintes globales)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 29.969,
+        "prompt_tokens": 1106,
+        "completion_tokens": 168,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation schéma)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 68.402,
+        "prompt_tokens": 1770,
+        "completion_tokens": 1401,
+        "tokens_known": true
+      },
+      "Agent 2 - Template": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 110.959,
+        "prompt_tokens": 6976,
+        "completion_tokens": 1483,
+        "tokens_known": true
+      },
+      "Agent 2 - Template (best-effort)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 160.242,
+        "prompt_tokens": 6899,
+        "completion_tokens": 1691,
+        "tokens_known": true
+      },
+      "Agent 3 - Validation": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 71.771,
+        "prompt_tokens": 3359,
+        "completion_tokens": 1220,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 67.385,
+        "prompt_tokens": 2196,
+        "completion_tokens": 1374,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 68.46,
+        "prompt_tokens": 2167,
+        "completion_tokens": 1440,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 89.063,
+        "prompt_tokens": 2560,
+        "completion_tokens": 1418,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 71.697,
+        "prompt_tokens": 5403,
+        "completion_tokens": 1636,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 73.154,
+        "prompt_tokens": 5432,
+        "completion_tokens": 1551,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 90.26,
+        "prompt_tokens": 5796,
+        "completion_tokens": 1917,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Judge": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 83.917,
+        "prompt_tokens": 6653,
+        "completion_tokens": 1831,
+        "tokens_known": true
+      },
+      "Agent 5 - Vérification finale": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 334.963,
+        "prompt_tokens": 16526,
+        "completion_tokens": 6991,
+        "tokens_known": true
+      },
+      "Réparation ciblée": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 29.316,
+        "prompt_tokens": 1136,
+        "completion_tokens": 601,
+        "tokens_known": true
+      }
+    }
+  }
+}

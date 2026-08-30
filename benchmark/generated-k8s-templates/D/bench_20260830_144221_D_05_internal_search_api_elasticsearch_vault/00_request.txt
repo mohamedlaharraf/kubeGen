@@ -1,0 +1,8 @@
+Déploie une API de recherche "search-api" (image myregistry/search:1.0),
+namespace "search", 2 réplicas, port 8080 en HTTP, exposée uniquement en
+interne.
+
+Elle a besoin d'un cluster Elasticsearch géré par l'opérateur ECK (Elastic
+Cloud on Kubernetes) avec 3 nœuds de données et de l'authentification
+gérée via HashiCorp Vault pour injecter les credentials automatiquement
+dans les pods (Vault Agent Injector).

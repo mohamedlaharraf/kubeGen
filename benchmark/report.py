@@ -21,6 +21,7 @@ import yaml
 
 from .adapters.base import RunResult
 from .energy_score import score as energy_score
+from .mcda_ranking import compute_ranking
 from .pricing import estimate_cost_usd
 from .validators import kube_linter
 from .validators.k8s_validate import full_validation
@@ -185,6 +186,40 @@ def write_markdown_report(records: list[dict], path: Path) -> None:
             f"{fmt(a['kube_linter_pass_rate_pct'], '%')} | {fmt(a['avg_energy_score'])} |"
         )
 
+    mcda = compute_ranking(aggregates)
+    lines += [
+        "",
+        "## Classement global (AHP + TOPSIS)",
+        "",
+        "Poids des critères dérivés par AHP (Analytic Hierarchy Process) à "
+        f"partir d'une matrice de comparaisons par paires vérifiée cohérente "
+        f"(CR = {mcda.consistency_ratio}, seuil 0.10) — voir "
+        "`benchmark/mcda_ranking.py` pour la matrice et sa justification. "
+        "Classement des architectures par TOPSIS (distance à la solution "
+        "idéale / anti-idéale) sur ces 4 critères pondérés : "
+        f"validité {mcda.weights.get('validity_rate', 0)*100:.1f}%, "
+        f"score énergie {mcda.weights.get('energy_score', 0)*100:.1f}%, "
+        f"coût {mcda.weights.get('cost', 0)*100:.1f}%, "
+        f"latence {mcda.weights.get('latency', 0)*100:.1f}%.",
+        "",
+    ]
+    if mcda.ranking:
+        lines += [
+            "| Rang | Architecture | Score TOPSIS (proximité à l'idéal) |",
+            "|---|---|---|",
+        ]
+        for i, arch_id in enumerate(mcda.ranking, start=1):
+            label = aggregates[arch_id]["architecture_label"]
+            lines.append(f"| {i} | {label} | {mcda.scores[arch_id]:.4f} |")
+    else:
+        lines.append("_Aucune architecture n'a toutes les données requises pour ce classement._")
+    if mcda.excluded:
+        lines.append("")
+        lines.append("Architecture(s) exclue(s) du classement (donnée manquante, pas de score arbitraire) :")
+        for arch_id, reason in mcda.excluded.items():
+            label = aggregates[arch_id]["architecture_label"]
+            lines.append(f"- {label} : {reason}")
+
     lines += [
         "",
         "## Détail par scénario",
@@ -213,10 +248,20 @@ def write_markdown_report(records: list[dict], path: Path) -> None:
         "`benchmark/validators/k8s_validate.py`.",
         "- **Validité syntaxique (kube-linter)** : nécessite le binaire "
         "`kube-linter` sur le PATH ; `N/A` si absent (voir `benchmark/README.md`).",
-        "- **Score énergie** : rubrique statique pondérée (requests/limits, "
-        "autoscaling, node scheduling, PodDisruptionBudget, probes), "
-        "normalisée sur les critères applicables à chaque scénario — voir "
-        "`benchmark/energy_score.py` pour le détail des poids.",
+        "- **Score énergie** : rubrique pondérée (requests/limits, "
+        "autoscaling, node scheduling, PodDisruptionBudget, probes), poids "
+        "dérivés par AHP (matrice de comparaisons par paires vérifiée "
+        "cohérente, CR < 0.10) plutôt que choisis à la main, normalisée sur "
+        "les critères applicables à chaque scénario — voir "
+        "`benchmark/energy_score.py` et `benchmark/ahp.py`.",
+        "- **Classement global** : AHP pour les poids des 4 critères "
+        "(validité, énergie, coût, latence), TOPSIS pour classer les "
+        "architectures par distance à la solution idéale/anti-idéale — "
+        "voir `benchmark/mcda_ranking.py` et `benchmark/topsis.py`. "
+        "Préféré à une moyenne pondérée simple parce qu'une architecture "
+        "\"bonne partout\" doit être distinguée d'une architecture "
+        "excellente sur un seul critère et médiocre ailleurs, à moyenne "
+        "égale.",
         "- **Coût monétaire** : extrapolé depuis `benchmark/pricing.py` "
         "(tarifs à re-vérifier avant publication, voir avertissement dans ce "
         "fichier).",

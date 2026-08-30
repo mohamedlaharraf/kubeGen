@@ -1,0 +1,96 @@
+{
+  "architecture_type": "single",
+  "namespace": "ops",
+  "components": [
+    {
+      "component_name": "log-cleanup",
+      "workload_type": "CronJob",
+      "image": "myregistry/cleanup-tool:1.0",
+      "replicas": 1,
+      "labels": {},
+      "ports": [],
+      "env_vars": [
+        {
+          "name": "LOG_RETENTION_DAYS",
+          "value": "30",
+          "from_secret": null,
+          "from_configmap": null,
+          "secret_key": null,
+          "configmap_key": null
+        }
+      ],
+      "volumes": [
+        {
+          "name": "shared-logs",
+          "mount_path": "/logs",
+          "kind": "pvc",
+          "source_name": "shared-logs",
+          "size": null,
+          "storage_class_name": null
+        }
+      ],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": "0 3 * * *",
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "global_constraints": [],
+  "application_context": "Tâche batch ponctuelle de nettoyage de logs, pas de notion de trafic ou de disponibilité continue.",
+  "raw_user_request": "Crée une tâche planifiée \"log-cleanup\" (image myregistry/cleanup-tool:1.0, namespace \"ops\") qui s'exécute tous les jours à 3h du matin pour purger les logs de plus de 30 jours sur un volume partagé \"shared-logs\" (PVC existant, montage en lecture-écriture). Pas besoin de port réseau. La tâche doit s'arrêter automatiquement si elle dépasse 15 minutes d'exécution, et ne pas relancer plus de 2 tentatives en cas d'échec.",
+  "ambiguities": [
+    {
+      "field": "components[0].volumes[0].mount_path",
+      "question": "Quel est le chemin de montage du volume shared-logs dans le conteneur ?",
+      "assumption_made": "/logs",
+      "confidence": "medium"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Tâche planifiée log-cleanup",
+      "Image myregistry/cleanup-tool:1.0",
+      "Namespace ops",
+      "Exécution quotidienne à 3h",
+      "Montage PVC shared-logs",
+      "Accès lecture-écriture sur volume",
+      "Pas de port réseau",
+      "Timeout 15 minutes",
+      "Max 2 tentatives",
+      "Purger les logs de plus de 30 jours"
+    ],
+    "requirements_mapped": [
+      "Tâche planifiée log-cleanup",
+      "Image myregistry/cleanup-tool:1.0",
+      "Namespace ops",
+      "Exécution quotidienne à 3h",
+      "Montage PVC shared-logs",
+      "Pas de port réseau",
+      "Accès lecture-écriture sur volume",
+      "Timeout 15 minutes",
+      "Max 2 tentatives",
+      "Purger les logs de plus de 30 jours"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 2,
+    "self_check_passed": true
+  }
+}

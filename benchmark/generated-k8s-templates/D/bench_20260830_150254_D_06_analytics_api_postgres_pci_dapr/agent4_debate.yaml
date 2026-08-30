@@ -1,0 +1,261 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-api-sa
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics-api
+  template:
+    metadata:
+      labels:
+        app: analytics-api
+        app.kubernetes.io/name: analytics-api
+        app.kubernetes.io/instance: analytics-api
+        app.kubernetes.io/version: '2.0'
+        app.kubernetes.io/part-of: data
+        app.kubernetes.io/managed-by: architecture-d
+      annotations:
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: analytics-api
+    spec:
+      serviceAccountName: analytics-api-sa
+      nodeSelector:
+        nodepool: shared
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/part-of
+                  operator: In
+                  values:
+                  - data
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: analytics-api
+        image: myregistry/analytics:2.0
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "400m"
+            memory: "384Mi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  type: ClusterIP
+  selector:
+    app: analytics-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: analytics-api-netpol
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  podSelector:
+    matchLabels:
+      app: analytics-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres-cluster
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-api-hpa
+  namespace: data
+  labels:
+    app: analytics-api
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+---
+manifest_yaml: "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: postgres-cluster-sa\n\
+  \  labels:\n    app: postgres-cluster\n    app.kubernetes.io/name: postgres-cluster\n\
+  \    app.kubernetes.io/instance: postgres-cluster\n    app.kubernetes.io/version:\
+  \ unknown\n    app.kubernetes.io/part-of: prod-db\n    app.kubernetes.io/managed-by:\
+  \ architecture-d\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n\
+  \  name: postgres-cluster-role\n  labels:\n    app: postgres-cluster\n    app.kubernetes.io/name:\
+  \ postgres-cluster\n    app.kubernetes.io/instance: postgres-cluster\n    app.kubernetes.io/version:\
+  \ unknown\n    app.kubernetes.io/part-of: prod-db\n    app.kubernetes.io/managed-by:\
+  \ architecture-d\nspec:\n  rules:\n    - apiGroups: [\"postgres.crunchydata.com\"\
+  ]\n      resources: [\"postgresclusters\"]\n      verbs: [\"get\", \"list\", \"\
+  watch\", \"create\", \"update\", \"patch\", \"delete\"]\n---\napiVersion: rbac.authorization.k8s.io/v1\n\
+  kind: RoleBinding\nmetadata:\n  name: postgres-cluster-rb\n  labels:\n    app: postgres-cluster\n\
+  \    app.kubernetes.io/name: postgres-cluster\n    app.kubernetes.io/instance: postgres-cluster\n\
+  \    app.kubernetes.io/version: unknown\n    app.kubernetes.io/part-of: prod-db\n\
+  \    app.kubernetes.io/managed-by: architecture-d\nsubjects:\n    - kind: ServiceAccount\n\
+  \      name: postgres-cluster-sa\n      namespace: prod-db\nroleRef:\n  kind: Role\n\
+  \  name: postgres-cluster-role\n  apiGroup: rbac.authorization.k8s.io\n---\napiVersion:\
+  \ networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: postgres-cluster-netpol\n\
+  \  labels:\n    app: postgres-cluster\n    app.kubernetes.io/name: postgres-cluster\n\
+  \    app.kubernetes.io/instance: postgres-cluster\n    app.kubernetes.io/version:\
+  \ unknown\n    app.kubernetes.io/part-of: prod-db\n    app.kubernetes.io/managed-by:\
+  \ architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: postgres-cluster\n\
+  \  policyTypes:\n    - Ingress\n    - Egress\n  ingress:\n    - from:\n        -\
+  \ podSelector: {}\n  egress:\n    - to:\n        - namespaceSelector: {}\n     \
+  \     podSelector:\n            matchLabels:\n              k8s-app: kube-dns\n\
+  \      ports:\n        - protocol: UDP\n          port: 53\n        - protocol:\
+  \ TCP\n          port: 53\n---\n# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non\
+  \ v\xE9rifi\xE9e par les contr\xF4les habituels du pipeline, \xE0 valider manuellement\
+  \ avant tout d\xE9ploiement.\napiVersion: postgres.crunchydata.com/v1\nkind: PostgresCluster\n\
+  metadata:\n  name: postgres-cluster\n  labels:\n    app: postgres-cluster\n    app.kubernetes.io/name:\
+  \ postgres-cluster\n    app.kubernetes.io/instance: postgres-cluster\n    app.kubernetes.io/version:\
+  \ unknown\n    app.kubernetes.io/part-of: prod-db\n    app.kubernetes.io/managed-by:\
+  \ architecture-d\nspec:\n  instances: 3\n  replication: synchronous\n  storage:\n\
+  \    storageClassName: pci-encrypted\n    size: 10Gi\n---\n# \u26A0\uFE0F G\xC9\
+  N\xC9RATION LIBRE \u2014 non v\xE9rifi\xE9e par les contr\xF4les habituels du pipeline,\
+  \ \xE0 valider manuellement avant tout d\xE9ploiement.\napiVersion: apps/v1\nkind:\
+  \ Deployment\nmetadata:\n  name: crunchydata-operator\n  labels:\n    app: postgres-cluster\n\
+  \    app.kubernetes.io/name: postgres-cluster\n    app.kubernetes.io/instance: postgres-cluster\n\
+  \    app.kubernetes.io/version: unknown\n    app.kubernetes.io/part-of: prod-db\n\
+  \    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 1\n  selector:\n\
+  \    matchLabels:\n      app: postgres-cluster\n  template:\n    metadata:\n   \
+  \   labels:\n        app: postgres-cluster\n        app.kubernetes.io/name: postgres-cluster\n\
+  \        app.kubernetes.io/instance: postgres-cluster\n        app.kubernetes.io/version:\
+  \ unknown\n        app.kubernetes.io/part-of: prod-db\n        app.kubernetes.io/managed-by:\
+  \ architecture-d\n    spec:\n      serviceAccountName: postgres-cluster-sa\n   \
+  \   containers:\n        - name: operator\n          image: crunchydata/postgres-operator:latest\n\
+  \          securityContext:\n            runAsNonRoot: true\n            allowPrivilegeEscalation:\
+  \ false\n            readOnlyRootFilesystem: true\n            capabilities:\n \
+  \             drop: [\"ALL\"]\n            seccompProfile:\n              type:\
+  \ RuntimeDefault"
+fields_addressed:
+- "component_name: postgres-cluster (inf\xE9r\xE9)"
+- "image: crunchydata/postgres-operator:latest (inf\xE9r\xE9)"
+- "namespace: prod-db (inf\xE9r\xE9)"
+- 'security_requirements: PCI-DSS, chiffrement au repos'
+- "rbac: enabled (inf\xE9r\xE9 pour l'op\xE9rateur)"
+- 'workload_type: StatefulSet (via PostgresCluster CRD)'
+fields_left_open: []
+security_requirements_addressed:
+- PCI-DSS niveau 1 (via NetworkPolicy restrictive et securityContext durci)
+- 'chiffrement au repos (via storageClassName: pci-encrypted)'
+security_requirements_left_open:
+- "rotation des cl\xE9s tous les 90 jours (n\xE9cessite un outil de gestion de secrets\
+  \ externe type HashiCorp Vault, non impl\xE9mentable en YAML k8s pur)"
+observability_requirements_addressed: []
+observability_requirements_left_open: []
+ingress_addressed: []
+ingress_left_open: []
+rbac_addressed:
+- ServiceAccount
+- Role
+- RoleBinding
+rbac_left_open: []
+warnings:
+- "app.kubernetes.io/version='unknown' : image sans tag explicite, \xE0 corriger avant\
+  \ d\xE9ploiement."
+- "StorageClass 'pci-encrypted' suppos\xE9e pour r\xE9pondre \xE0 l'exigence de chiffrement\
+  \ au repos, \xE0 v\xE9rifier avec l'\xE9quipe infra."
+- "L'impl\xE9mentation PCI-DSS niveau 1 n\xE9cessite \xE9galement des audits de logs\
+  \ et un monitoring r\xE9seau non configurables via ce template."

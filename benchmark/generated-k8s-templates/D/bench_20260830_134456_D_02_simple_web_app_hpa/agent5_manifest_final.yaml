@@ -1,0 +1,174 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkout-api-sa
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: checkout-api
+    app.kubernetes.io/instance: checkout-api
+    app.kubernetes.io/version: 1.4.2
+    app.kubernetes.io/part-of: payments
+    app.kubernetes.io/managed-by: architecture-d
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-api
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: checkout-api
+    app.kubernetes.io/instance: checkout-api
+    app.kubernetes.io/version: 1.4.2
+    app.kubernetes.io/part-of: payments
+    app.kubernetes.io/managed-by: architecture-d
+    app: checkout-api
+spec:
+  type: ClusterIP
+  selector:
+    app: checkout-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: checkout-api
+    app.kubernetes.io/instance: checkout-api
+    app.kubernetes.io/version: 1.4.2
+    app.kubernetes.io/part-of: payments
+    app.kubernetes.io/managed-by: architecture-d
+    app: checkout-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: checkout-api
+        app.kubernetes.io/instance: checkout-api
+        app.kubernetes.io/version: 1.4.2
+        app.kubernetes.io/part-of: payments
+        app.kubernetes.io/managed-by: architecture-d
+        app: checkout-api
+    spec:
+      serviceAccountName: checkout-api-sa
+      nodeSelector:
+        nodepool: shared
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: checkout-api
+              topologyKey: "kubernetes.io/hostname"
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: checkout-api
+        image: myregistry/checkout:1.4.2
+        resources:
+          requests:
+            cpu: "150m"
+            memory: "256Mi"
+          limits:
+            cpu: "270m"
+            memory: "320Mi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: checkout-db-secret
+              key: DB_PASSWORD
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: checkout-api-netpol
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: checkout-api
+    app.kubernetes.io/instance: checkout-api
+    app.kubernetes.io/version: 1.4.2
+    app.kubernetes.io/part-of: payments
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  podSelector:
+    matchLabels:
+      app: checkout-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: checkout-api-scaledobject
+  namespace: payments
+  labels:
+    app.kubernetes.io/name: checkout-api
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  scaleTargetRef:
+    name: checkout-api
+  minReplicaCount: 2
+  maxReplicaCount: 8
+  triggers:
+    - type: cron
+      metadata:
+        timezone: UTC
+        start: "0 0 * * *"
+        end: "0 6 * * *"
+        desiredReplicas: "2"
+    - type: cron
+      metadata:
+        timezone: UTC
+        start: "0 9 * * *"
+        end: "0 12 * * *"
+        desiredReplicas: "8"
+    - type: cpu
+      metadata:
+        value: "70"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+---
+# ⚠️ GÉNÉRATION LIBRE — non vérifiée par les contrôles habituels du pipeline, à valider manuellement avant tout déploiement.
+# Impossible de générer un fragment plausible pour : Runtime/Langage: Node.js (cette information est une propriété de l'image du conteneur et ne correspond à aucune ressource Kubernetes standard ou CRD courante).
+---

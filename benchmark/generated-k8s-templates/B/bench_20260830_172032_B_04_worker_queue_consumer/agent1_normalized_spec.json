@@ -1,0 +1,111 @@
+{
+  "architecture_type": "single",
+  "namespace": "media",
+  "components": [
+    {
+      "component_name": "image-resizer",
+      "workload_type": "Deployment",
+      "image": "myregistry/resizer:3.2",
+      "replicas": 1,
+      "labels": {
+        "app": "image-resizer",
+        "language": "python"
+      },
+      "ports": [],
+      "env_vars": [
+        {
+          "name": "RABBITMQ_HOST",
+          "value": null,
+          "from_secret": null,
+          "from_configmap": "rabbitmq-config",
+          "secret_key": null,
+          "configmap_key": "host"
+        },
+        {
+          "name": "RABBITMQ_QUEUE",
+          "value": "resize-queue",
+          "from_secret": null,
+          "from_configmap": null,
+          "secret_key": null,
+          "configmap_key": null
+        }
+      ],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [
+        "économiser un maximum de ressources quand la file est vide",
+        "scale to 0 au repos"
+      ],
+      "resource_hints": "Scaling de 0 à 10 réplicas selon la charge de la file RabbitMQ",
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "Scaling automatique basé sur le nombre de messages en attente dans la file RabbitMQ 'resize-queue' via KEDA (0 à 10 réplicas)",
+      "suggested_kind": "ScaledObject"
+    }
+  ],
+  "raw_user_request": "Déploie un worker Python \"image-resizer\" (image myregistry/resizer:3.2, namespace \"media\") qui consomme des messages depuis une file RabbitMQ (\"resize-queue\", hôte à lire depuis le ConfigMap \"rabbitmq-config\", clé \"host\"). Pas de port HTTP exposé. Je veux qu'il scale automatiquement en fonction du nombre de messages en attente dans la file (KEDA), de 0 au repos jusqu'à 10 réplicas maximum en pic de charge, pour économiser un maximum de ressources quand la file est vide. Pas de stockage persistant nécessaire.",
+  "ambiguities": [
+    {
+      "field": "components[0].env_vars[0].name",
+      "question": "Quel est le nom de la variable d'environnement attendue par l'application pour l'hôte RabbitMQ ?",
+      "assumption_made": "Utilisation de 'RABBITMQ_HOST' comme nom standard.",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[0].replicas",
+      "question": "Quel est le nombre de réplicas initial souhaité avant que KEDA ne prenne le relais ?",
+      "assumption_made": "Fixé à 1 pour assurer le démarrage initial.",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Worker Python image-resizer",
+      "Image myregistry/resizer:3.2",
+      "Namespace media",
+      "Consommation file RabbitMQ resize-queue",
+      "Hôte RabbitMQ via ConfigMap rabbitmq-config clé host",
+      "Aucun port HTTP exposé",
+      "Scaling KEDA 0-10 réplicas selon messages en attente",
+      "Optimisation énergétique (scale to 0)",
+      "Pas de stockage persistant"
+    ],
+    "requirements_mapped": [
+      "Worker Python image-resizer",
+      "Image myregistry/resizer:3.2",
+      "Namespace media",
+      "Consommation file RabbitMQ resize-queue",
+      "Hôte RabbitMQ via ConfigMap rabbitmq-config clé host",
+      "Aucun port HTTP exposé",
+      "Optimisation énergétique (scale to 0)",
+      "Pas de stockage persistant"
+    ],
+    "requirements_unmapped": [
+      "La contrainte de scaling à 0 réplica au repos n'est pas reflétée dans le champ 'replicas' du composant (fixé à 1).",
+      "La configuration KEDA pour le scaling automatique (0 à 10 réplicas) n'est pas représentée structurellement dans les composants, elle est uniquement mentionnée dans 'unmapped_requirements' et 'resource_hints'.",
+      "Scaling KEDA 0-10 réplicas selon messages en attente"
+    ],
+    "repair_attempts": 2,
+    "self_check_passed": false
+  }
+}

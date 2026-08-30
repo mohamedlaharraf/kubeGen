@@ -1,0 +1,96 @@
+{
+  "architecture_type": "single",
+  "namespace": "web",
+  "components": [
+    {
+      "component_name": "landing-page",
+      "workload_type": "Deployment",
+      "image": "nginx:1.27",
+      "replicas": 1,
+      "labels": {
+        "app": "landing-page"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 80,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": {
+        "enabled": true,
+        "host": "www.exemple.com",
+        "path": "/",
+        "tls": false,
+        "tls_secret_name": null,
+        "ingress_class": null,
+        "api_style": "ingress",
+        "gateway_name": null,
+        "cert_manager_issuer": null,
+        "cert_manager_issuer_kind": "ClusterIssuer"
+      },
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "global_constraints": [],
+  "application_context": "Site web statique à trafic minimal, pas de contrainte de disponibilité critique.",
+  "raw_user_request": "Déploie un site web statique appelé \"landing-page\" (image nginx:1.27,\nnamespace \"web\"), servi sur le port 80. Un seul réplica suffit, pas de\nbase de données ni de stockage persistant. Accessible depuis internet\nvia le domaine \"www.exemple.com\", sans TLS pour l'instant.",
+  "ambiguities": [
+    {
+      "field": "ingress.path",
+      "question": "Le chemin d'accès n'est pas précisé pour le domaine.",
+      "assumption_made": "/",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Nom de l'app: landing-page",
+      "Image: nginx:1.27",
+      "Namespace: web",
+      "Port: 80",
+      "Réplicas: 1",
+      "Pas de base de données",
+      "Pas de stockage persistant",
+      "Accès internet via www.exemple.com",
+      "Pas de TLS"
+    ],
+    "requirements_mapped": [
+      "Nom de l'app: landing-page",
+      "Image: nginx:1.27",
+      "Namespace: web",
+      "Port: 80",
+      "Réplicas: 1",
+      "Pas de base de données",
+      "Pas de stockage persistant",
+      "Accès internet via www.exemple.com",
+      "Pas de TLS"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 0,
+    "self_check_passed": true
+  }
+}

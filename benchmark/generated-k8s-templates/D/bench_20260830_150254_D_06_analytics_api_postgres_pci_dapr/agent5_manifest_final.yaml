@@ -1,0 +1,350 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod-db
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-api-sa
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics-api
+  template:
+    metadata:
+      labels:
+        app: analytics-api
+        app.kubernetes.io/name: analytics-api
+        app.kubernetes.io/instance: analytics-api
+        app.kubernetes.io/version: '2.0'
+        app.kubernetes.io/part-of: data
+        app.kubernetes.io/managed-by: architecture-d
+      annotations:
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: analytics-api
+    spec:
+      serviceAccountName: analytics-api-sa
+      nodeSelector:
+        nodepool: shared
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/part-of
+                  operator: In
+                  values:
+                  - data
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: analytics-api
+        image: myregistry/analytics:2.0
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 400m
+            memory: 384Mi
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  type: ClusterIP
+  selector:
+    app: analytics-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: analytics-api-netpol
+  namespace: data
+  labels:
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  podSelector:
+    matchLabels:
+      app: analytics-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: prod-db
+      podSelector:
+        matchLabels:
+          app: postgres-cluster
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-api-hpa
+  namespace: data
+  labels:
+    app: analytics-api
+    app.kubernetes.io/name: analytics-api
+    app.kubernetes.io/instance: analytics-api
+    app.kubernetes.io/version: '2.0'
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-cluster-sa
+  namespace: prod-db
+  labels:
+    app: postgres-cluster
+    app.kubernetes.io/name: postgres-cluster
+    app.kubernetes.io/instance: postgres-cluster
+    app.kubernetes.io/version: unknown
+    app.kubernetes.io/part-of: prod-db
+    app.kubernetes.io/managed-by: architecture-d
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres-cluster-role
+  namespace: prod-db
+  labels:
+    app: postgres-cluster
+    app.kubernetes.io/name: postgres-cluster
+    app.kubernetes.io/instance: postgres-cluster
+    app.kubernetes.io/version: unknown
+    app.kubernetes.io/part-of: prod-db
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  rules:
+  - apiGroups:
+    - postgres.crunchydata.com
+    resources:
+    - postgresclusters
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - patch
+    - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-cluster-rb
+  namespace: prod-db
+  labels:
+    app: postgres-cluster
+    app.kubernetes.io/name: postgres-cluster
+    app.kubernetes.io/instance: postgres-cluster
+    app.kubernetes.io/version: unknown
+    app.kubernetes.io/part-of: prod-db
+    app.kubernetes.io/managed-by: architecture-d
+subjects:
+- kind: ServiceAccount
+  name: postgres-cluster-sa
+  namespace: prod-db
+roleRef:
+  kind: Role
+  name: postgres-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-cluster-netpol
+  namespace: prod-db
+  labels:
+    app: postgres-cluster
+    app.kubernetes.io/name: postgres-cluster
+    app.kubernetes.io/instance: postgres-cluster
+    app.kubernetes.io/version: unknown
+    app.kubernetes.io/part-of: prod-db
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres-cluster
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  egress:
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: postgres.crunchydata.com/v1
+kind: PostgresCluster
+metadata:
+  name: postgres-cluster
+  namespace: prod-db
+  labels:
+    app: postgres-cluster
+    app.kubernetes.io/name: postgres-cluster
+    app.kubernetes.io/instance: postgres-cluster
+    app.kubernetes.io/version: unknown
+    app.kubernetes.io/part-of: prod-db
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  instances: 3
+  replication: synchronous
+  storage:
+    storageClassName: pci-encrypted
+    size: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crunchydata-operator
+  namespace: prod-db
+  labels:
+    app: postgres-cluster
+    app.kubernetes.io/name: postgres-cluster
+    app.kubernetes.io/instance: postgres-cluster
+    app.kubernetes.io/version: unknown
+    app.kubernetes.io/part-of: prod-db
+    app.kubernetes.io/managed-by: architecture-d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-cluster
+  template:
+    metadata:
+      labels:
+        app: postgres-cluster
+        app.kubernetes.io/name: postgres-cluster
+        app.kubernetes.io/instance: postgres-cluster
+        app.kubernetes.io/version: unknown
+        app.kubernetes.io/part-of: prod-db
+        app.kubernetes.io/managed-by: architecture-d
+    spec:
+      serviceAccountName: postgres-cluster-sa
+      containers:
+      - name: operator
+        image: crunchydata/postgres-operator:latest
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi

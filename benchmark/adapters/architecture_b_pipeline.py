@@ -35,7 +35,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 # dossier frère "Architecture-2-pipeline/" à la racine du repo. Surchargeable
 # via PIPELINE_KUBEGEN_DIR si votre disposition est différente.
 PIPELINE_KUBEGEN_DIR = Path(
-    os.getenv("PIPELINE_KUBEGEN_DIR") or (_REPO_ROOT / "Architecture-2-pipeline")
+    os.getenv("PIPELINE_KUBEGEN_DIR") or (_REPO_ROOT / "Architecture-B")
 )
 
 # Interpréteur Python à utiliser pour lancer le pipeline. Auto-détection,

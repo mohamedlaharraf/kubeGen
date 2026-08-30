@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .base import ArchitectureAdapter, RunResult, StepTelemetry
 
-_ARCH_A_DIR = Path(__file__).resolve().parents[2] / "Architecture-1-single-agent"
+_ARCH_A_DIR = Path(__file__).resolve().parents[2] / "Architecture-A"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_ARCH_A_DIR) not in sys.path:
     sys.path.insert(0, str(_ARCH_A_DIR))

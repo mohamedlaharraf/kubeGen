@@ -1,0 +1,116 @@
+{
+  "architecture_type": "single",
+  "namespace": "media",
+  "components": [
+    {
+      "component_name": "image-resizer",
+      "workload_type": "Deployment",
+      "image": "myregistry/resizer:3.2",
+      "replicas": 1,
+      "labels": {
+        "app": "image-resizer"
+      },
+      "ports": [],
+      "env_vars": [
+        {
+          "name": "RABBITMQ_HOST",
+          "value": null,
+          "from_secret": null,
+          "from_configmap": "rabbitmq-config",
+          "secret_key": null,
+          "configmap_key": "host"
+        },
+        {
+          "name": "RABBITMQ_QUEUE",
+          "value": "resize-queue",
+          "from_secret": null,
+          "from_configmap": null,
+          "secret_key": null,
+          "configmap_key": null
+        }
+      ],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [
+        "économiser un maximum de ressources quand la file est vide"
+      ],
+      "resource_hints": "Scaling de 0 à 10 réplicas basé sur la longueur de la file RabbitMQ",
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "scale automatiquement en fonction du nombre de messages en attente dans la file (KEDA), de 0 au repos jusqu'à 10 réplicas maximum",
+      "suggested_kind": "KEDA ScaledObject"
+    },
+    {
+      "text": "Le worker est développé en Python",
+      "suggested_kind": "runtime"
+    }
+  ],
+  "global_constraints": [],
+  "application_context": "Worker de traitement asynchrone avec trafic variable. Profil de charge dépendant d'une file de messages, nécessitant un scaling agressif (jusqu'à 0) pour l'optimisation énergétique.",
+  "raw_user_request": "Déploie un worker Python \"image-resizer\" (image myregistry/resizer:3.2, namespace \"media\") qui consomme des messages depuis une file RabbitMQ (\"resize-queue\", hôte à lire depuis le ConfigMap \"rabbitmq-config\", clé \"host\"). Pas de port HTTP exposé. Je veux qu'il scale automatiquement en fonction du nombre de messages en attente dans la file (KEDA), de 0 au repos jusqu'à 10 réplicas maximum en pic de charge, pour économiser un maximum de ressources quand la file est vide. Pas de stockage persistant nécessaire.",
+  "ambiguities": [
+    {
+      "field": "components[0].env_vars",
+      "question": "Quel est le nom exact de la variable d'environnement attendue par l'application pour l'hôte RabbitMQ ?",
+      "assumption_made": "Utilisation de 'RABBITMQ_HOST'",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[0].replicas",
+      "question": "Nombre de réplicas initial ?",
+      "assumption_made": "1 (le scaling à 0 sera géré par KEDA)",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Worker Python image-resizer",
+      "Image myregistry/resizer:3.2",
+      "Namespace media",
+      "Consommation RabbitMQ queue resize-queue",
+      "Hôte RabbitMQ via ConfigMap rabbitmq-config clé host",
+      "Pas de port HTTP exposé",
+      "Scaling KEDA 0 à 10 réplicas",
+      "Économie de ressources maximale",
+      "Pas de stockage persistant"
+    ],
+    "requirements_mapped": [
+      "Worker image-resizer",
+      "Image myregistry/resizer:3.2",
+      "Namespace media",
+      "Consommation RabbitMQ queue resize-queue",
+      "Hôte RabbitMQ via ConfigMap rabbitmq-config clé host",
+      "Pas de port HTTP exposé",
+      "Économie de ressources maximale",
+      "Pas de stockage persistant"
+    ],
+    "requirements_unmapped": [
+      "Scaling KEDA 0 à 10 réplicas",
+      "La configuration spécifique du scaling KEDA (plage de 0 à 10 réplicas) n'est pas intégrée dans un champ structuré dédié (présente uniquement dans 'unmapped_requirements' et 'resource_hints').",
+      "Le runtime 'Python' n'est pas représenté dans les champs structurés du composant (présent uniquement dans 'unmapped_requirements').",
+      "Runtime Python"
+    ],
+    "repair_attempts": 2,
+    "self_check_passed": false
+  }
+}

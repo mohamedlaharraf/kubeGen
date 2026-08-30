@@ -1,0 +1,124 @@
+{
+  "architecture_type": "single",
+  "namespace": "search",
+  "components": [
+    {
+      "component_name": "search-api",
+      "workload_type": "Deployment",
+      "image": "myregistry/search:1.0",
+      "replicas": 2,
+      "labels": {},
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [
+        {
+          "name": "vault-agent",
+          "image": "hashicorp/vault-agent:latest",
+          "purpose": "Injection automatique des credentials via Vault Agent Injector",
+          "ports": [],
+          "env_vars": [],
+          "resource_hints": null
+        }
+      ],
+      "depends_on": [
+        "elasticsearch"
+      ],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [
+        "Exposition réseau uniquement interne",
+        "Authentification et injection de credentials gérées via HashiCorp Vault (Vault Agent Injector)"
+      ],
+      "observability_requirements": [],
+      "ingress": {
+        "enabled": false,
+        "host": null,
+        "path": "/",
+        "tls": false,
+        "tls_secret_name": null,
+        "ingress_class": null,
+        "api_style": "ingress",
+        "gateway_name": null,
+        "cert_manager_issuer": null,
+        "cert_manager_issuer_kind": "ClusterIssuer"
+      },
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": {
+        "restrict_egress": false,
+        "allowed_egress_targets": [],
+        "allowed_ingress_sources": []
+      },
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "Cluster Elasticsearch géré par l'opérateur ECK (Elastic Cloud on Kubernetes) avec 3 nœuds de données",
+      "suggested_kind": null
+    }
+  ],
+  "global_constraints": [
+    {
+      "text": "authentification gérée via HashiCorp Vault pour injecter les credentials automatiquement dans les pods (Vault Agent Injector)",
+      "scope": "all_components",
+      "applies_to": [],
+      "category": "security"
+    }
+  ],
+  "application_context": "API de recherche interne avec dépendance vers un cluster Elasticsearch géré par opérateur. Trafic interne, criticité modérée, pas de besoin de scaling dynamique explicite.",
+  "raw_user_request": "Déploie une API de recherche \"search-api\" (image myregistry/search:1.0),\nnamespace \"search\", 2 réplicas, port 8080 en HTTP, exposée uniquement en\ninterne.\n\nElle a besoin d'un cluster Elasticsearch géré par l'opérateur ECK (Elastic\nCloud on Kubernetes) avec 3 nœuds de données et de l'authentification\ngérée via HashiCorp Vault pour injecter les credentials automatiquement\ndans les pods (Vault Agent Injector).",
+  "ambiguities": [
+    {
+      "field": "components[0].sidecars[0].image",
+      "question": "L'utilisateur mentionne le 'Vault Agent Injector' (qui est un webhook), mais pas l'image du sidecar résultant.",
+      "assumption_made": "Utilisation de l'image standard 'hashicorp/vault-agent:latest' pour représenter le sidecar injecté.",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déploiement de l'API search-api",
+      "Image myregistry/search:1.0",
+      "Namespace search",
+      "2 réplicas",
+      "Port 8080 HTTP",
+      "Exposition interne uniquement",
+      "Cluster Elasticsearch via opérateur ECK avec 3 nœuds",
+      "Injection de credentials via HashiCorp Vault Agent Injector"
+    ],
+    "requirements_mapped": [
+      "Déploiement de l'API search-api",
+      "Image myregistry/search:1.0",
+      "Namespace search",
+      "2 réplicas",
+      "Port 8080 HTTP",
+      "Exposition interne uniquement",
+      "Injection de credentials via HashiCorp Vault Agent Injector",
+      "Cluster Elasticsearch via opérateur ECK avec 3 nœuds"
+    ],
+    "requirements_unmapped": [
+      "The specific requirement that the 3 Elasticsearch nodes must be 'data nodes' (nœuds de données) is not explicitly captured in the constraints or configuration, only the number of replicas is mentioned."
+    ],
+    "repair_attempts": 2,
+    "self_check_passed": false
+  }
+}

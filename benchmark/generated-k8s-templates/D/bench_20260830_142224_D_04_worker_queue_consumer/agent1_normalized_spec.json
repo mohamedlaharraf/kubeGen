@@ -1,0 +1,106 @@
+{
+  "architecture_type": "single",
+  "namespace": "media",
+  "components": [
+    {
+      "component_name": "image-resizer",
+      "workload_type": "Deployment",
+      "image": "myregistry/resizer:3.2",
+      "replicas": 0,
+      "labels": {
+        "app": "image-resizer"
+      },
+      "ports": [],
+      "env_vars": [
+        {
+          "name": "RABBITMQ_HOST",
+          "value": null,
+          "from_secret": null,
+          "from_configmap": "rabbitmq-config",
+          "secret_key": null,
+          "configmap_key": "host"
+        },
+        {
+          "name": "RABBITMQ_QUEUE",
+          "value": "resize-queue",
+          "from_secret": null,
+          "from_configmap": null,
+          "secret_key": null,
+          "configmap_key": null
+        }
+      ],
+      "volumes": [],
+      "sidecars": [],
+      "depends_on": [],
+      "energy_goals": [
+        "économiser un maximum de ressources quand la file est vide"
+      ],
+      "resource_hints": "Scaling automatique via KEDA : min 0, max 10 réplicas, trigger basé sur la longueur de la file RabbitMQ 'resize-queue'",
+      "traffic_windows": [],
+      "constraints": [
+        "Runtime: Python"
+      ],
+      "security_requirements": [],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [],
+  "global_constraints": [],
+  "application_context": "Worker de traitement d'images asynchrone avec scaling basé sur une file d'attente. Trafic variable, objectif d'économie d'énergie via scale-to-zero.",
+  "raw_user_request": "Déploie un worker Python \"image-resizer\" (image myregistry/resizer:3.2, namespace \"media\") qui consomme des messages depuis une file RabbitMQ (\"resize-queue\", hôte à lire depuis le ConfigMap \"rabbitmq-config\", clé \"host\"). Pas de port HTTP exposé. Je veux qu'il scale automatiquement en fonction du nombre de messages en attente dans la file (KEDA), de 0 au repos jusqu'à 10 réplicas maximum en pic de charge, pour économiser un maximum de ressources quand la file est vide. Pas de stockage persistant nécessaire.",
+  "ambiguities": [
+    {
+      "field": "components[0].env_vars",
+      "question": "Quels sont les noms exacts des variables d'environnement attendus par l'image pour l'hôte et la file RabbitMQ ?",
+      "assumption_made": "Utilisation de RABBITMQ_HOST et RABBITMQ_QUEUE",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[0].labels",
+      "question": "Quels labels doivent être appliqués au déploiement ?",
+      "assumption_made": "Ajout d'un label standard app: image-resizer",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déploiement worker Python image-resizer",
+      "Image myregistry/resizer:3.2",
+      "Namespace media",
+      "Consommation RabbitMQ resize-queue",
+      "Hôte RabbitMQ via ConfigMap rabbitmq-config/host",
+      "Pas de port HTTP exposé",
+      "Scaling KEDA 0-10 réplicas",
+      "Économie de ressources au repos",
+      "Pas de stockage persistant"
+    ],
+    "requirements_mapped": [
+      "Déploiement worker image-resizer",
+      "Image myregistry/resizer:3.2",
+      "Namespace media",
+      "Consommation RabbitMQ resize-queue",
+      "Hôte RabbitMQ via ConfigMap rabbitmq-config/host",
+      "Pas de port HTTP exposé",
+      "Économie de ressources au repos",
+      "Pas de stockage persistant",
+      "Scaling KEDA 0-10 réplicas",
+      "Langage Python"
+    ],
+    "requirements_unmapped": [],
+    "repair_attempts": 2,
+    "self_check_passed": true
+  }
+}

@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-resizer
+  namespace: media
+  labels:
+    app: image-resizer
+    version: 3.2
+    part-of: media-processing
+spec:
+  # minReplicas géré par KEDA (ScaledObject), on commence à 1 pour le déploiement initial
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-resizer
+  template:
+    metadata:
+      labels:
+        app: image-resizer
+        version: 3.2
+        part-of: media-processing
+    spec:
+      securityContext:
+        # Sécurité : exécution en utilisateur non-root
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+        - name: resizer
+          image: myregistry/resizer:3.2
+          securityContext:
+            # Sécurité : système de fichiers en lecture seule pour limiter la surface d'attaque
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+          env:
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: host
+            - name: QUEUE_NAME
+              value: "resize-queue"
+          resources:
+            # Efficacité énergétique : requests faibles pour optimiser le bin-packing des nœuds
+            # Limits définies pour éviter que le redimensionnement d'images ne sature le nœud
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # Pas de ports exposés selon la demande, donc pas de probes HTTP.
+          # On utilise une probe de démarrage basée sur l'exécution du process.
+          startupProbe:
+            exec:
+              command: ["pgrep", "python"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: image-resizer-scaler
+  namespace: media
+spec:
+  scaleTargetRef:
+    name: image-resizer
+  # Efficacité énergétique : scale to 0 quand la file est vide pour supprimer toute consommation CPU/RAM
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers:
+    - type: rabbitmq
+      metadata:
+        # Récupération de l'hôte via le ConfigMap n'est pas possible nativement dans ScaledObject metadata
+        # On suppose ici que l'hôte est accessible via un DNS interne ou défini ici
+        host: rabbitmq-service.media.svc.cluster.local # Valeur par défaut prudente
+        queue: resize-queue
+        # Seuil de déclenchement : 1 pod pour 20 messages en attente
+        queueLength: "20"

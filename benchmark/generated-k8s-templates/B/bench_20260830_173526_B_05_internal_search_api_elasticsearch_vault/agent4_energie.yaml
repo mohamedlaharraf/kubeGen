@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: search-api-sa
+  namespace: search
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-api
+  namespace: search
+spec:
+  type: ClusterIP
+  selector:
+    app: search-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: search-api-netpol
+  namespace: search
+spec:
+  podSelector:
+    matchLabels:
+      app: search-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app: search-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: search-api
+  template:
+    metadata:
+      labels:
+        app: search-api
+      annotations:
+        vault.hashicorp.com/agent-inject: 'true'
+    spec:
+      serviceAccountName: search-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: search-api
+        image: myregistry/search:1.0
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: search-api-hpa
+  namespace: search
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: search-api
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search
+---
+manifest_yaml: "# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9rifi\xE9e par\
+  \ les contr\xF4les habituels du pipeline, \xE0 valider manuellement avant tout d\xE9\
+  ploiement.\napiVersion: elasticsearch.k8s.elastic.co/v1\nkind: Elasticsearch\nmetadata:\n\
+  \  name: elasticsearch\nspec:\n  version: 8.12.0\n  nodeSets:\n  - name: data-nodes\n\
+  \    count: 3\n    config:\n      node.roles: [\"master\", \"data\", \"ingest\"]"
+fields_addressed:
+- "Cluster Elasticsearch g\xE9r\xE9 par l'op\xE9rateur ECK (Elastic Cloud on Kubernetes)\
+  \ avec 3 n\u0153uds de donn\xE9es"
+fields_left_open: []
+security_requirements_addressed: []
+security_requirements_left_open: []
+observability_requirements_addressed: []
+observability_requirements_left_open: []
+ingress_addressed: []
+ingress_left_open: []
+rbac_addressed: []
+rbac_left_open: []
+warnings:
+- "L'op\xE9rateur ECK (Elastic Cloud on Kubernetes) doit \xEAtre install\xE9 dans\
+  \ le cluster pour que cette ressource soit reconnue."
+- "La version '8.12.0' a \xE9t\xE9 suppos\xE9e par d\xE9faut, \xE0 adapter selon vos\
+  \ besoins."
+- "La configuration des r\xF4les (master, data, ingest) est une configuration standard\
+  \ pour un petit cluster, \xE0 valider selon la charge pr\xE9vue."
