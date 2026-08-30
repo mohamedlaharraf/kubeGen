@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-api-sa
+  namespace: data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+spec:
+  type: ClusterIP
+  selector:
+    app: analytics-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-api
+  template:
+    metadata:
+      labels:
+        app: analytics-api
+      annotations:
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: analytics-api
+        dapr.io/app-port: '8080'
+    spec:
+      serviceAccountName: analytics-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: analytics-api
+        image: myregistry/analytics:2.0
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-api
+  namespace: data
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-api
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+---
+manifest_yaml: "# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9rifi\xE9e par\
+  \ les contr\xF4les habituels du pipeline, \xE0 valider manuellement avant tout d\xE9\
+  ploiement.\napiVersion: postgres-operator.crunchydata.com/v1beta1\nkind: PostgresCluster\n\
+  metadata:\n  name: postgres-cluster\nspec:\n  instances: 3\n  replication:\n   \
+  \ synchronous: true\n  storage:\n    storageClassName: encrypted-storage"
+fields_addressed:
+- 'non-standard requirements: CrunchyData PostgreSQL'
+fields_left_open: []
+security_requirements_addressed:
+- chiffrement au repos obligatoire pour tous les volumes
+security_requirements_left_open: []
+observability_requirements_addressed: []
+observability_requirements_left_open: []
+ingress_addressed: []
+ingress_left_open: []
+rbac_addressed: []
+rbac_left_open: []
+warnings:
+- "L'utilisation de la ressource PostgresCluster n\xE9cessite l'installation de l'op\xE9\
+  rateur CrunchyData PostgreSQL dans le cluster."
+- "Le storageClassName 'encrypted-storage' a \xE9t\xE9 utilis\xE9 comme placeholder\
+  \ pour r\xE9pondre \xE0 l'exigence de chiffrement au repos ; ce nom doit \xEAtre\
+  \ remplac\xE9 par le StorageClass chiffr\xE9 r\xE9el du cluster."

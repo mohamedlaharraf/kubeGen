@@ -1,0 +1,141 @@
+{
+  "architecture_type": "single",
+  "namespace": "data",
+  "components": [
+    {
+      "component_name": "analytics-api",
+      "workload_type": "Deployment",
+      "image": "myregistry/analytics:2.0",
+      "replicas": 1,
+      "labels": {
+        "app": "analytics-api"
+      },
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 8080,
+          "protocol": "TCP",
+          "expose_service": true
+        }
+      ],
+      "env_vars": [],
+      "volumes": [],
+      "sidecars": [
+        {
+          "name": "dapr",
+          "image": "daprio/dapr:latest",
+          "purpose": "communication pub/sub avec les autres services de l'entreprise",
+          "ports": [],
+          "env_vars": [],
+          "resource_hints": null
+        }
+      ],
+      "depends_on": [
+        "postgres-cluster"
+      ],
+      "energy_goals": [],
+      "resource_hints": null,
+      "traffic_windows": [],
+      "constraints": [],
+      "security_requirements": [
+        "Conformité norme PCI-DSS niveau 1"
+      ],
+      "observability_requirements": [],
+      "ingress": null,
+      "rbac": {
+        "enabled": false,
+        "rules_description": []
+      },
+      "service_mesh_routing": [],
+      "observability_style": "annotations",
+      "cron_schedule": null,
+      "config_maps": [],
+      "network_policy": null,
+      "deployment_strategy": null
+    }
+  ],
+  "admission_policies": [],
+  "target_clusters": [],
+  "unmapped_requirements": [
+    {
+      "text": "{'requirement': \"L'opérateur spécifique 'CrunchyData' pour la base de données\", 'suggested_kind': 'operator'}",
+      "suggested_kind": "operator"
+    },
+    {
+      "text": "{'requirement': 'PostgresCluster avec 3 instances et réplication synchrone', 'suggested_kind': 'PostgresCluster'}",
+      "suggested_kind": "PostgresCluster"
+    }
+  ],
+  "global_constraints": [
+    {
+      "text": "L'application doit être conforme à la norme PCI-DSS niveau 1",
+      "scope": "all_components",
+      "applies_to": [],
+      "category": "compliance"
+    },
+    {
+      "text": "chiffrement au repos obligatoire pour tous les volumes",
+      "scope": "all_volumes",
+      "applies_to": [],
+      "category": "compliance"
+    },
+    {
+      "text": "rotation des clés tous les 90 jours",
+      "scope": "all_components",
+      "applies_to": [],
+      "category": "compliance"
+    }
+  ],
+  "application_context": "API d'analytics critique soumise à des normes de sécurité strictes (PCI-DSS). Profil de trafic non spécifié, mais haute disponibilité requise pour la couche de données.",
+  "raw_user_request": "Déploie une API d'analytics appelée \"analytics-api\", image myregistry/analytics:2.0, namespace \"data\", port 8080. Elle doit se connecter à une base de données gérée par l'opérateur CrunchyData PostgreSQL (PostgresCluster avec 3 instances et réplication synchrone). L'application doit aussi être conforme à la norme PCI-DSS niveau 1 (chiffrement au repos obligatoire pour tous les volumes, rotation des clés tous les 90 jours). Utilise aussi Dapr comme sidecar pour la communication pub/sub avec les autres services de l'entreprise.",
+  "ambiguities": [
+    {
+      "field": "components[0].replicas",
+      "question": "Le nombre de réplicas pour l'API n'est pas précisé.",
+      "assumption_made": "Valeur par défaut à 1",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[0].sidecars[0].image",
+      "question": "L'image exacte de Dapr n'est pas fournie.",
+      "assumption_made": "Utilisation de daprio/dapr:latest",
+      "confidence": "medium"
+    },
+    {
+      "field": "components[0].ingress",
+      "question": "L'utilisateur ne mentionne pas d'exposition externe (URL, Host).",
+      "assumption_made": "Ingress désactivé, service interne uniquement",
+      "confidence": "high"
+    }
+  ],
+  "coverage": {
+    "requirements_detected": [
+      "Déploiement de l'API analytics-api",
+      "Image myregistry/analytics:2.0",
+      "Namespace data",
+      "Port 8080",
+      "Base de données PostgreSQL (PostgresCluster, 3 instances, réplication synchrone)",
+      "Opérateur CrunchyData",
+      "Conformité PCI-DSS niveau 1",
+      "Chiffrement au repos pour tous les volumes",
+      "Rotation des clés tous les 90 jours",
+      "Sidecar Dapr pour pub/sub"
+    ],
+    "requirements_mapped": [
+      "Déploiement de l'API analytics-api",
+      "Image myregistry/analytics:2.0",
+      "Namespace data",
+      "Port 8080",
+      "Conformité PCI-DSS niveau 1",
+      "Chiffrement au repos pour tous les volumes",
+      "Rotation des clés tous les 90 jours",
+      "Sidecar Dapr pour pub/sub"
+    ],
+    "requirements_unmapped": [
+      "Opérateur CrunchyData",
+      "Base de données PostgreSQL (PostgresCluster, 3 instances, réplication synchrone)"
+    ],
+    "repair_attempts": 2,
+    "self_check_passed": true
+  }
+}

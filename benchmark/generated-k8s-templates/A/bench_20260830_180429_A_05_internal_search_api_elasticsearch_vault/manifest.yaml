@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: search-cluster
+  namespace: search
+spec:
+  version: 8.12.0 # Version stable par défaut
+  nodeSets:
+  - name: data
+    count: 3
+    config:
+      node.roles: ["master", "data"]
+    podTemplate:
+      spec:
+        containers:
+        - resources:
+            # Dimensionnement optimisé pour éviter le gaspillage énergétique sur des petits clusters
+            requests:
+              memory: 2Gi
+              cpu: 500m
+            limits:
+              memory: 4Gi
+              cpu: 1000m
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app: search-api
+    version: 1.0
+spec:
+  replicas: 2 # Disponibilité minimale assurée sans sur-provisionnement
+  selector:
+    matchLabels:
+      app: search-api
+  template:
+    metadata:
+      labels:
+        app: search-api
+        version: 1.0
+      annotations:
+        # Injection Vault Agent pour la gestion sécurisée des credentials
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "search-api-role" # Hypothèse : rôle Vault pré-configuré
+        vault.hashicorp.com/agent-inject-secret-elasticsearch-creds: "secret/data/search/elasticsearch"
+        vault.hashicorp.com/agent-inject-template-elasticsearch-creds: |
+          {{- with secret "secret/data/search/elasticsearch" -}}
+          export ES_USERNAME="{{ .Data.data.username }}"
+          export ES_PASSWORD="{{ .Data.data.password }}"
+          {{- end -}}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+      - name: search-api
+        image: myregistry/search:1.0
+        ports:
+        - containerPort: 8080
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        env:
+        - name: ELASTICSEARCH_URL
+          value: "search-cluster-es-http.search.svc.cluster.local:9200"
+        # Le fichier injecté par Vault est sourcé au démarrage via un script ou chargé par l'app
+        command: ["/bin/sh", "-c"]
+        args: ["source /vault/secrets/elasticsearch-creds && ./search-api"]
+        resources:
+          # Requests ajustées au plus juste pour maximiser la densité des nœuds (Eco-efficiency)
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz # Chemin standard supposé
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /ready # Chemin standard supposé
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-api
+  namespace: search
+spec:
+  type: ClusterIP # Exposition interne uniquement comme demandé
+  selector:
+    app: search-api
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: search-api-hpa
+  namespace: search
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: search-api
+  minReplicas: 2 # Maintien de la haute disponibilité
+  maxReplicas: 5 # Plafond pour éviter l'explosion des coûts/énergie
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70 # Seuil optimisé pour déclencher le scale-up uniquement si nécessaire

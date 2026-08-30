@@ -30,7 +30,7 @@ from .base import ArchitectureAdapter, RunResult, StepTelemetry
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 ARCH_C_DIR = Path(
-    os.getenv("ARCH_C_DIR") or (_REPO_ROOT / "Architecture-3-blackboard")
+    os.getenv("ARCH_C_DIR") or (_REPO_ROOT / "Architecture-C")
 )
 
 

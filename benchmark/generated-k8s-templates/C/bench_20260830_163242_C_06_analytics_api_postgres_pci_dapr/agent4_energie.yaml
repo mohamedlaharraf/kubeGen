@@ -1,0 +1,171 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-api-sa
+  namespace: data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-api
+  namespace: data
+  labels:
+    app: analytics-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics-api
+  template:
+    metadata:
+      labels:
+        app: analytics-api
+      annotations:
+        dapr.io/enabled: 'true'
+        dapr.io/app-id: analytics-api
+    spec:
+      serviceAccountName: analytics-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: analytics-api
+        image: myregistry/analytics:2.0
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-api
+  namespace: data
+spec:
+  type: ClusterIP
+  selector:
+    app: analytics-api
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: analytics-api-netpol
+  namespace: data
+spec:
+  podSelector:
+    matchLabels:
+      app: analytics-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-api-hpa
+  namespace: data
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics-api
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: analytics-api-pdb
+  namespace: data
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: analytics-api
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+---
+manifest_yaml: "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: postgres-db-sa\n\
+  ---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: postgres-db-netpol\n\
+  spec:\n  podSelector:\n    matchLabels:\n      app: postgres-db\n  policyTypes:\n\
+  \  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector: {}\n  egress:\n\
+  \  - to:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name:\
+  \ kube-system\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol:\
+  \ TCP\n      port: 53\n---\n# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9\
+  rifi\xE9e par les contr\xF4les habituels du pipeline, \xE0 valider manuellement\
+  \ avant tout d\xE9ploiement.\napiVersion: postgres-operator.crunchydata.com/v1beta1\n\
+  kind: PostgresCluster\nmetadata:\n  name: postgres-db\nspec:\n  instances:\n   \
+  \ - name: instance1\n    - name: instance2\n    - name: instance3\n  replication:\n\
+  \    synchronous: true\n  storage:\n    storageClassName: encrypted-storage"
+fields_addressed:
+- 'non_standard_requirements: CrunchyData PostgreSQL'
+- 'global_constraints: PCI-DSS compliance'
+- 'global_constraints: Volume encryption'
+fields_left_open:
+- "component_name: d\xE9duit de l'exigence (postgres-db)"
+- "image: g\xE9r\xE9e par l'op\xE9rateur CrunchyData"
+- "ports: g\xE9r\xE9s par l'op\xE9rateur CrunchyData"
+- "replicas: d\xE9finis via instances dans PostgresCluster"
+security_requirements_addressed:
+- "PCI-DSS: Isolation r\xE9seau via NetworkPolicy (Ingress restreint, Egress DNS uniquement)"
+- 'Volume encryption: Utilisation d''une StorageClass ''encrypted-storage'''
+security_requirements_left_open:
+- "Rotation des cl\xE9s tous les 90 jours: n\xE9cessite un gestionnaire de secrets\
+  \ externe (Vault/AWS KMS) et un processus d'automatisation non impl\xE9mentable\
+  \ via YAML statique"
+observability_requirements_addressed: []
+observability_requirements_left_open: []
+ingress_addressed: []
+ingress_left_open: []
+rbac_addressed:
+- "ServiceAccount: postgres-db-sa cr\xE9\xE9"
+rbac_left_open: []
+warnings:
+- "La ressource PostgresCluster n\xE9cessite l'installation de l'op\xE9rateur CrunchyData\
+  \ PostgreSQL dans le cluster."
+- "Le chiffrement au repos d\xE9pend de la configuration r\xE9elle de la StorageClass\
+  \ 'encrypted-storage' sur le fournisseur cloud."
+- "La rotation des cl\xE9s est une exigence de conformit\xE9 qui doit \xEAtre orchestr\xE9\
+  e par un outil de gestion de secrets et non par le manifeste Kubernetes."

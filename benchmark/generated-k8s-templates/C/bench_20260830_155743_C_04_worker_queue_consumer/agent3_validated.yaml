@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: media
+data:
+  host: "rabbitmq-service"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-resizer-sa
+  namespace: media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-resizer
+  namespace: media
+  labels:
+    app: image-resizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-resizer
+  template:
+    metadata:
+      labels:
+        app: image-resizer
+    spec:
+      serviceAccountName: image-resizer-sa
+      containers:
+        - name: image-resizer
+          image: myregistry/resizer:3.2
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: host
+            - name: RABBITMQ_QUEUE
+              value: "resize-queue"

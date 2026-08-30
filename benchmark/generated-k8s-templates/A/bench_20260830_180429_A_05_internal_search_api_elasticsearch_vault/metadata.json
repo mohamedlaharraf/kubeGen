@@ -1,0 +1,15 @@
+{
+  "architecture": "1_single_agent_monolithic",
+  "model": "gemma-4-31b-it",
+  "temperature": 0.2,
+  "requirement": "Déploie une API de recherche \"search-api\" (image myregistry/search:1.0),\nnamespace \"search\", 2 réplicas, port 8080 en HTTP, exposée uniquement en\ninterne.\n\nElle a besoin d'un cluster Elasticsearch géré par l'opérateur ECK (Elastic\nCloud on Kubernetes) avec 3 nœuds de données et de l'authentification\ngérée via HashiCorp Vault pour injecter les credentials automatiquement\ndans les pods (Vault Agent Injector).\n",
+  "latency_seconds": 31.02,
+  "output_chars": 3688,
+  "prompt_tokens": 726,
+  "output_tokens": 1070,
+  "total_tokens": 1796,
+  "num_llm_calls": 1,
+  "yaml_valid": true,
+  "validation_errors": [],
+  "timestamp": "2026-08-30T18:05:04.336734"
+}

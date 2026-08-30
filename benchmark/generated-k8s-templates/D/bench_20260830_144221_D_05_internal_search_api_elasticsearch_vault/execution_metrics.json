@@ -1,0 +1,144 @@
+{
+  "pipeline_latency_seconds": 1132.565,
+  "total_latency_seconds": 1132.565,
+  "llm_calls": {
+    "total_calls": 17,
+    "failed_calls": 0,
+    "total_latency_seconds": 1425.316,
+    "average_latency_seconds": 83.842,
+    "tokens_known": true,
+    "total_prompt_tokens": 65949,
+    "total_completion_tokens": 20537,
+    "total_tokens": 86486,
+    "by_agent": {
+      "Agent 1 - Analyse (extraction)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 60.502,
+        "prompt_tokens": 5332,
+        "completion_tokens": 1095,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (self-check)": {
+        "calls": 2,
+        "failed_calls": 0,
+        "latency_seconds": 56.843,
+        "prompt_tokens": 2628,
+        "completion_tokens": 88,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 68.379,
+        "prompt_tokens": 1211,
+        "completion_tokens": 1423,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (contraintes globales)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 61.979,
+        "prompt_tokens": 1077,
+        "completion_tokens": 72,
+        "tokens_known": true
+      },
+      "Agent 1 - Analyse (réparation schéma)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 70.491,
+        "prompt_tokens": 1669,
+        "completion_tokens": 1494,
+        "tokens_known": true
+      },
+      "Agent 2 - Template": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 112.301,
+        "prompt_tokens": 7010,
+        "completion_tokens": 1477,
+        "tokens_known": true
+      },
+      "Agent 2 - Template (best-effort)": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 88.985,
+        "prompt_tokens": 7063,
+        "completion_tokens": 1223,
+        "tokens_known": true
+      },
+      "Agent 3 - Validation": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 69.643,
+        "prompt_tokens": 3285,
+        "completion_tokens": 1129,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 58.89,
+        "prompt_tokens": 2470,
+        "completion_tokens": 1082,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 66.593,
+        "prompt_tokens": 2106,
+        "completion_tokens": 1410,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 69.286,
+        "prompt_tokens": 2077,
+        "completion_tokens": 1500,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-consolidation-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 81.807,
+        "prompt_tokens": 5159,
+        "completion_tokens": 1661,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-sizing-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 87.663,
+        "prompt_tokens": 5188,
+        "completion_tokens": 1667,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Strategy-autoscaling-Critique": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 238.778,
+        "prompt_tokens": 5552,
+        "completion_tokens": 1264,
+        "tokens_known": true
+      },
+      "Agent4-Debate-Judge": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 87.846,
+        "prompt_tokens": 6079,
+        "completion_tokens": 1638,
+        "tokens_known": true
+      },
+      "Agent 5 - Vérification finale": {
+        "calls": 1,
+        "failed_calls": 0,
+        "latency_seconds": 145.329,
+        "prompt_tokens": 8043,
+        "completion_tokens": 2314,
+        "tokens_known": true
+      }
+    }
+  }
+}

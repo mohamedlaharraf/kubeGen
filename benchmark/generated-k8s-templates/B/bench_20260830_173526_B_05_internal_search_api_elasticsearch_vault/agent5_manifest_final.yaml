@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: search
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: search-api-sa
+  namespace: search
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-api
+  namespace: search
+spec:
+  type: ClusterIP
+  selector:
+    app: search-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: search-api-netpol
+  namespace: search
+spec:
+  podSelector:
+    matchLabels:
+      app: search-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-api
+  namespace: search
+  labels:
+    app: search-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: search-api
+  template:
+    metadata:
+      labels:
+        app: search-api
+      annotations:
+        vault.hashicorp.com/agent-inject: 'true'
+    spec:
+      serviceAccountName: search-api-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: search-api
+        image: myregistry/search:1.0
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: search-api-hpa
+  namespace: search
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: search-api
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+---
+# ⚠️ GÉNÉRATION LIBRE — non vérifiée par les contrôles habituels du pipeline, à valider manuellement avant tout déploiement.
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: search
+spec:
+  version: 8.12.0
+  nodeSets:
+  - name: data-nodes
+    count: 3
+    config:
+      node.roles: ["master", "data", "ingest"]

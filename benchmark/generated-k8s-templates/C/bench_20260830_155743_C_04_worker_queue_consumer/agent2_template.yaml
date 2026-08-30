@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-resizer-sa
+  namespace: media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-resizer
+  namespace: media
+  labels:
+    app: image-resizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-resizer
+  template:
+    metadata:
+      labels:
+        app: image-resizer
+    spec:
+      serviceAccountName: image-resizer-sa
+      containers:
+        - name: image-resizer
+          image: myregistry/resizer:3.2
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rabbitmq-config
+                  key: host
+            - name: RABBITMQ_QUEUE
+              value: "resize-queue"
+
+---
+{
+  "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: worker-sa\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: worker\n  labels:\n    app: worker\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: worker\n  template:\n    metadata:\n      labels:\n        app: worker\n    spec:\n      serviceAccountName: worker-sa\n      securityContext:\n        runAsNonRoot: true\n        seccompProfile:\n          type: RuntimeDefault\n      containers:\n        - name: worker\n          image: python:3.9\n          securityContext:\n            allowPrivilegeEscalation: false\n            readOnlyRootFilesystem: true\n            capabilities:\n              drop:\n                - ALL\n---\n# ⚠️ GÉNÉRATION LIBRE — non vérifiée par les contrôles habituels du pipeline, à valider manuellement avant tout déploiement.\napiVersion: keda.sh/v1alpha1\nkind: ScaledObject\nmetadata:\n  name: worker-scaledobject\nspec:\n  scaleTargetRef:\n    name: worker\n  minReplicaCount: 0\n  maxReplicaCount: 10\n  triggers:\n    - type: rabbitmq\n      metadata:\n        queueName: worker-queue",
+  "fields_addressed": [
+    "non_standard_requirements: KEDA scaling implemented",
+    "non_standard_requirements: Python runtime used for image"
+  ],
+  "fields_left_open": [
+    "component_name: non fourni, supposé 'worker'",
+    "image: non fournie, supposée 'python:3.9'",
+    "ports: aucun fourni",
+    "env_vars: aucun fourni",
+    "volumes: aucun fourni",
+    "ingress: aucun fourni",
+    "rbac: aucune règle spécifique fournie"
+  ],
+  "security_requirements_addressed": [
+    "Application du hardening par défaut : runAsNonRoot, allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities.drop: ALL, seccompProfile: RuntimeDefault"
+  ],
+  "security_requirements_left_open": [],
+  "observability_requirements_addressed": [],
+  "observability_requirements_left_open": [],
+  "ingress_addressed": [
+    "aucun ingress demandé"
+  ],
+  "ingress_left_open": [],
+  "rbac_addressed": [
+    "Création du ServiceAccount dédié 'worker-sa'"
+  ],
+  "rbac_left_open": [],
+  "warnings": [
+    "Le nom du composant 'worker' et l'image 'python:3.9' ont été déduits du texte des exigences non standard.",
+    "Le type de trigger KEDA a été supposé comme 'rabbitmq' (placeholder) car le type de file d'attente n'était pas précisé.",
+    "Le hardening de sécurité par défaut a été appliqué car aucune exigence spécifique n'était mentionnée."
+  ]
+}

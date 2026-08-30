@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: log-cleanup
+  namespace: ops
+  labels:
+    app: log-cleanup
+    version: "1.0"
+    part-of: operations
+spec:
+  # Exécution quotidienne à 3h00 du matin
+  schedule: "0 3 * * *"
+  # Limite à 2 tentatives en cas d'échec pour éviter la consommation inutile de ressources
+  jobConcurrencyPolicy: Replace
+  # Nettoyage automatique des jobs réussis/échoués pour économiser les ressources du control plane
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          securityContext:
+            # Sécurité : exécution en tant qu'utilisateur non-root
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 2000
+          containers:
+          - name: cleanup-tool
+            image: myregistry/cleanup-tool:1.0
+            # Sécurité : Système de fichiers racine en lecture seule (le volume est monté séparément)
+            securityContext:
+              readOnlyRootFilesystem: true
+              allowPrivilegeEscalation: false
+            resources:
+              # Efficacité énergétique : Requests minimales pour un outil de nettoyage (batch)
+              # afin d'éviter de réserver inutilement des ressources sur le nœud.
+              requests:
+                cpu: "50m"
+                memory: "64Mi"
+              limits:
+                cpu: "200m"
+                memory: "128Mi"
+            volumeMounts:
+            - name: logs-storage
+              mountPath: /var/log/shared # Chemin hypothétique pour le montage des logs
+            # La tâche s'arrête si elle dépasse 15 minutes (900 secondes)
+            # Note: activeDeadlineSeconds est défini au niveau du Job/Pod
+          activeDeadlineSeconds: 900
+          restartPolicy: OnFailure
+          volumes:
+          - name: logs-storage
+            persistentVolumeClaim:
+              claimName: shared-logs # PVC existant comme demandé

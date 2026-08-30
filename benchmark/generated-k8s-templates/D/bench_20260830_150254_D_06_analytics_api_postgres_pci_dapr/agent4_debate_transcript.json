@@ -1,0 +1,134 @@
+{
+  "transcripts": {
+    "analytics-api": [
+      {
+        "round_number": 1,
+        "proposals": [
+          {
+            "strategy": "consolidation",
+            "component_name": "analytics-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: analytics-api-sa\n  namespace: data\n  labels:\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: analytics-api\n  template:\n    metadata:\n      labels:\n        app: analytics-api\n        app.kubernetes.io/name: analytics-api\n        app.kubernetes.io/instance: analytics-api\n        app.kubernetes.io/version: '2.0'\n        app.kubernetes.io/part-of: data\n        app.kubernetes.io/managed-by: architecture-d\n      annotations:\n        dapr.io/enabled: 'true'\n        dapr.io/app-id: analytics-api\n    spec:\n      serviceAccountName: analytics-api-sa\n      nodeSelector:\n        nodepool: shared\n      affinity:\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            podAffinityTerm:\n              labelSelector:\n                matchExpressions:\n                - key: app.kubernetes.io/part-of\n                  operator: In\n                  values:\n                  - data\n              topologyKey: kubernetes.io/hostname\n      containers:\n      - name: analytics-api\n        image: myregistry/analytics:2.0\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        resources:\n          requests:\n            cpu: \"200m\"\n            memory: \"256Mi\"\n          limits:\n            cpu: \"400m\"\n            memory: \"384Mi\"\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        securityContext:\n          runAsNonRoot: true\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n          seccompProfile:\n            type: RuntimeDefault\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: analytics-api\n  ports:\n  - name: http\n    port: 80\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: analytics-api-netpol\n  namespace: data\n  labels:\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: analytics-api\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector: {}\n  egress:\n  - to:\n    - podSelector:\n        matchLabels:\n          app: postgres-cluster\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: kube-system\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53",
+            "rationale": "Le manifest a été révisé pour intégrer la haute disponibilité (2 réplicas) et la stabilité (requests augmentées selon la stratégie sizing). Pour compenser l'augmentation de la consommation de ressources, j'ai maintenu l'orientation vers un pool partagé et l'affinité préférentielle pour regrouper les pods de la couche 'data' sur un minimum de nœuds, maximisant ainsi la densité et permettant l'extinction des nœuds vides.",
+            "estimated_energy_savings_pct": 15.0,
+            "performance_risk": "low",
+            "actions": [
+              "Alignement des requests sur le profil critique pour éviter les restarts",
+              "Passage à 2 réplicas pour la HA",
+              "Maintien du nodeSelector 'shared' et de la podAffinity pour la consolidation"
+            ],
+            "warnings": [
+              "L'augmentation des requests et du nombre de réplicas réduit le gain potentiel de consolidation par rapport à une version minimaliste, mais reste optimal pour un profil critique."
+            ]
+          },
+          {
+            "strategy": "sizing",
+            "component_name": "analytics-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: analytics-api-sa\n  namespace: data\n  labels:\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: analytics-api\n  template:\n    metadata:\n      labels:\n        app: analytics-api\n        app.kubernetes.io/name: analytics-api\n        app.kubernetes.io/instance: analytics-api\n        app.kubernetes.io/version: '2.0'\n        app.kubernetes.io/part-of: data\n        app.kubernetes.io/managed-by: architecture-d\n      annotations:\n        dapr.io/enabled: 'true'\n        dapr.io/app-id: analytics-api\n    spec:\n      serviceAccountName: analytics-api-sa\n      containers:\n      - name: analytics-api\n        image: myregistry/analytics:2.0\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        resources:\n          requests:\n            cpu: \"200m\"\n            memory: \"256Mi\"\n          limits:\n            cpu: \"400m\"\n            memory: \"384Mi\"\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        securityContext:\n          runAsNonRoot: true\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n          seccompProfile:\n            type: RuntimeDefault\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: analytics-api\n  ports:\n  - name: http\n    port: 80\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: analytics-api-netpol\n  namespace: data\n  labels:\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: analytics-api\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector: {}\n  egress:\n  - to:\n    - podSelector:\n        matchLabels:\n          app: postgres-cluster\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: kube-system\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53",
+            "rationale": "In the absence of resource_hints, sizing is based on the 'critical analytics API' profile. CPU requests are set to 200m to ensure baseline stability for data processing, with a limit of 400m (2x ratio) to handle bursts without excessive waste. Memory is calibrated at 256Mi request and 384Mi limit (1.5x ratio) to prevent OOMKills while avoiding the common anti-pattern of oversized memory buffers in analytics workloads. TCP probes are used to ensure health checks do not introduce additional HTTP overhead or false restarts.",
+            "estimated_energy_savings_pct": 15.0,
+            "performance_risk": "low",
+            "actions": [
+              "Set CPU requests to 200m and limits to 400m",
+              "Set Memory requests to 256Mi and limits to 384Mi",
+              "Implement tcpSocket probes for health checks"
+            ],
+            "warnings": [
+              "The HPA proposed by Strategy C requires these requests to be present to function correctly."
+            ]
+          },
+          {
+            "strategy": "autoscaling",
+            "component_name": "analytics-api",
+            "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: analytics-api-sa\n  namespace: data\n  labels:\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: analytics-api\n  template:\n    metadata:\n      labels:\n        app: analytics-api\n        app.kubernetes.io/name: analytics-api\n        app.kubernetes.io/instance: analytics-api\n        app.kubernetes.io/version: '2.0'\n        app.kubernetes.io/part-of: data\n        app.kubernetes.io/managed-by: architecture-d\n      annotations:\n        dapr.io/enabled: 'true'\n        dapr.io/app-id: analytics-api\n    spec:\n      serviceAccountName: analytics-api-sa\n      nodeSelector:\n        nodepool: shared\n      affinity:\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            podAffinityTerm:\n              labelSelector:\n                matchExpressions:\n                - key: app.kubernetes.io/part-of\n                  operator: In\n                  values:\n                  - data\n              topologyKey: kubernetes.io/hostname\n      containers:\n      - name: analytics-api\n        image: myregistry/analytics:2.0\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        resources:\n          requests:\n            cpu: \"200m\"\n            memory: \"256Mi\"\n          limits:\n            cpu: \"400m\"\n            memory: \"384Mi\"\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        securityContext:\n          runAsNonRoot: true\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n          seccompProfile:\n            type: RuntimeDefault\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: analytics-api\n  ports:\n  - name: http\n    port: 80\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: analytics-api-netpol\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: analytics-api\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector: {}\n  egress:\n  - to:\n    - podSelector:\n        matchLabels:\n          app: postgres-cluster\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: kube-system\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53\n---\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: analytics-api-hpa\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: analytics-api\n  minReplicas: 2\n  maxReplicas: 10\n  metrics:\n  - type: Resource\n    resource:\n      name: cpu\n      target:\n        type: Utilization\n        averageUtilization: 70",
+            "rationale": "The revised proposal ensures High Availability (HA) by enforcing a minimum of 2 replicas, resolving the SPOF risk introduced by the other strategies. It integrates the precise resource sizing and TCP probes from the Sizing strategy to ensure the HPA has a stable baseline for CPU-based scaling. It also retains the nodeSelector and preferred podAffinity from the Consolidation strategy to allow the cluster to optimize placement without sacrificing availability during scaling events.",
+            "estimated_energy_savings_pct": 20.0,
+            "performance_risk": "low",
+            "actions": [
+              "Set minReplicas to 2 to guarantee HA for critical API",
+              "Integrated resource requests/limits for HPA stability",
+              "Added TCP probes for reliable health checks",
+              "Maintained preferred podAffinity for node consolidation"
+            ],
+            "warnings": [
+              "HPA requires the Kubernetes Metrics Server to be installed and functional in the cluster."
+            ]
+          }
+        ],
+        "critiques": [
+          {
+            "from_strategy": "consolidation",
+            "target_strategy": "sizing",
+            "component_name": "analytics-api",
+            "comment": "La stratégie de sizing propose des requests plus élevées (200m/256Mi) que mon estimation minimale. Bien que je les accepte pour garantir la stabilité d'une API critique, je rappelle que l'augmentation des requests est le premier facteur de fragmentation des nœuds et de gaspillage énergétique.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "consolidation",
+            "target_strategy": "autoscaling",
+            "component_name": "analytics-api",
+            "comment": "Je suis d'accord avec le passage à 2 réplicas pour répondre à l'exigence de haute disponibilité. Ma stratégie de placement (podAffinity) compensera l'augmentation du nombre de pods en les regroupant pour éviter l'activation de nœuds supplémentaires.",
+            "agrees": true
+          },
+          {
+            "from_strategy": "sizing",
+            "target_strategy": "consolidation",
+            "component_name": "analytics-api",
+            "comment": "The requests (100m/128Mi) are too aggressive for a 'critical' analytics API. Under-provisioning the baseline leads to CPU throttling and OOMKills, which trigger pod restarts that consume more energy than a stable, slightly higher allocation. Additionally, the memory limit of 256Mi is too tight for an analytics workload, increasing the risk of instability.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "sizing",
+            "target_strategy": "autoscaling",
+            "component_name": "analytics-api",
+            "comment": "The manifest provided by the autoscaling strategy omits the 'resources' block entirely. An HPA cannot function without defined 'requests' as it calculates utilization as a percentage of the request. My sizing is a technical prerequisite for the HPA to operate.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "autoscaling",
+            "target_strategy": "consolidation",
+            "component_name": "analytics-api",
+            "comment": "Conflit majeur sur le nombre de réplicas : la stratégie de consolidation impose 'replicas: 1', ce qui crée un point de défaillance unique (SPOF) incompatible avec l'exigence de haute disponibilité pour une API critique. De plus, l'affinité forte vers un seul hôte pourrait limiter la résilience lors d'un scale-up via HPA. Je maintiens le minReplicas: 2 et l'utilisation de l'affinité en mode 'preferred' pour concilier compaction et disponibilité.",
+            "agrees": false
+          },
+          {
+            "from_strategy": "autoscaling",
+            "target_strategy": "sizing",
+            "component_name": "analytics-api",
+            "comment": "Conflit sur le nombre de réplicas (1 vs 2). Cependant, je suis en accord avec le calibrage des ressources (requests/limits) et l'ajout des sondes TCP, car un HPA basé sur le CPU nécessite des requests CPU précises et stables pour calculer correctement le pourcentage d'utilisation. J'intègre donc ses définitions de ressources et de probes dans ma proposition révisée.",
+            "agrees": false
+          }
+        ]
+      }
+    ]
+  },
+  "judge_verdicts": [
+    {
+      "component_name": "analytics-api",
+      "manifest_yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: analytics-api-sa\n  namespace: data\n  labels:\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: analytics-api\n  template:\n    metadata:\n      labels:\n        app: analytics-api\n        app.kubernetes.io/name: analytics-api\n        app.kubernetes.io/instance: analytics-api\n        app.kubernetes.io/version: '2.0'\n        app.kubernetes.io/part-of: data\n        app.kubernetes.io/managed-by: architecture-d\n      annotations:\n        dapr.io/enabled: 'true'\n        dapr.io/app-id: analytics-api\n    spec:\n      serviceAccountName: analytics-api-sa\n      nodeSelector:\n        nodepool: shared\n      affinity:\n        podAffinity:\n          preferredDuringSchedulingIgnoredDuringExecution:\n          - weight: 100\n            podAffinityTerm:\n              labelSelector:\n                matchExpressions:\n                - key: app.kubernetes.io/part-of\n                  operator: In\n                  values:\n                  - data\n              topologyKey: kubernetes.io/hostname\n      containers:\n      - name: analytics-api\n        image: myregistry/analytics:2.0\n        ports:\n        - name: http\n          containerPort: 8080\n          protocol: TCP\n        resources:\n          requests:\n            cpu: \"200m\"\n            memory: \"256Mi\"\n          limits:\n            cpu: \"400m\"\n            memory: \"384Mi\"\n        livenessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 15\n          periodSeconds: 20\n        readinessProbe:\n          tcpSocket:\n            port: 8080\n          initialDelaySeconds: 5\n          periodSeconds: 10\n        securityContext:\n          runAsNonRoot: true\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          capabilities:\n            drop:\n            - ALL\n          seccompProfile:\n            type: RuntimeDefault\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: analytics-api\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  type: ClusterIP\n  selector:\n    app: analytics-api\n  ports:\n  - name: http\n    port: 80\n    targetPort: 8080\n    protocol: TCP\n---\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: analytics-api-netpol\n  namespace: data\n  labels:\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  podSelector:\n    matchLabels:\n      app: analytics-api\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector: {}\n  egress:\n  - to:\n    - podSelector:\n        matchLabels:\n          app: postgres-cluster\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: kube-system\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53\n---\napiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: analytics-api-hpa\n  namespace: data\n  labels:\n    app: analytics-api\n    app.kubernetes.io/name: analytics-api\n    app.kubernetes.io/instance: analytics-api\n    app.kubernetes.io/version: '2.0'\n    app.kubernetes.io/part-of: data\n    app.kubernetes.io/managed-by: architecture-d\nspec:\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: analytics-api\n  minReplicas: 2\n  maxReplicas: 10\n  metrics:\n  - type: Resource\n    resource:\n      name: cpu\n      target:\n        type: Utilization\n        averageUtilization: 70",
+      "reasoning": "The final manifest is a fusion of the three strategies, prioritizing High Availability (HA) and stability as required by the 'critical' nature of the analytics API. 1) Replicas: The conflict between 1 and 2 replicas was resolved in favor of 2 (Autoscaling/Consolidation) to eliminate the Single Point of Failure (SPOF). 2) Resources: Sizing's resource requests (200m/256Mi) were retained over Consolidation's lower estimates to prevent CPU throttling and OOMKills, which is critical for stability and a prerequisite for the HPA to function correctly. 3) Placement: Consolidation's nodeSelector (shared pool) and preferred podAffinity were kept. The 'preferred' mode was specifically chosen over 'required' to ensure that the HPA can still scale pods to other nodes if the preferred host is saturated, balancing energy density with availability. 4) Scaling: The HPA from the Autoscaling strategy was integrated to handle traffic bursts. 5) Probes: TCP probes from Sizing were adopted to minimize overhead. Security contexts from the original YAML were preserved to maintain PCI-DSS compliance.",
+      "strategy_scores": {
+        "consolidation": 9.0,
+        "sizing": 9.0,
+        "autoscaling": 10.0
+      },
+      "chosen_elements": {
+        "resources": "sizing",
+        "probes": "sizing",
+        "nodeSelector": "consolidation",
+        "affinity": "consolidation",
+        "replicas": "autoscaling",
+        "hpa": "autoscaling"
+      },
+      "fields_addressed": [
+        "resources",
+        "affinity",
+        "nodeSelector",
+        "replicas",
+        "hpa",
+        "probes"
+      ],
+      "fields_left_open": [],
+      "warnings": []
+    }
+  ]
+}

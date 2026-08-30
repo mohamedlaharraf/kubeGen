@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-resizer-sa
+  namespace: media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-resizer
+  namespace: media
+  labels:
+    app: image-resizer
+    language: python
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-resizer
+  template:
+    metadata:
+      labels:
+        app: image-resizer
+        language: python
+    spec:
+      serviceAccountName: image-resizer-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: image-resizer
+        image: myregistry/resizer:3.2
+        ports:
+        - containerPort: 8080
+          name: health
+        env:
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: rabbitmq-config
+              key: host
+        - name: RABBITMQ_QUEUE
+          value: resize-queue
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: image-resizer-hpa
+  namespace: media
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: image-resizer
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+manifest_yaml: "# \u26A0\uFE0F G\xC9N\xC9RATION LIBRE \u2014 non v\xE9rifi\xE9e par\
+  \ les contr\xF4les habituels du pipeline, \xE0 valider manuellement avant tout d\xE9\
+  ploiement.\napiVersion: keda.sh/v1alpha1\nkind: ScaledObject\nmetadata:\n  name:\
+  \ resize-queue-scaler\nspec:\n  scaleTargetRef:\n    name: <component_name>\n  minReplicaCount:\
+  \ 0\n  maxReplicaCount: 10\n  triggers:\n    - type: rabbitmq\n      metadata:\n\
+  \        queueName: resize-queue\n        mode: QueueLength"
+fields_addressed:
+- 'non-standard requirements: KEDA scaling'
+fields_left_open: []
+security_requirements_addressed: []
+security_requirements_left_open: []
+observability_requirements_addressed: []
+observability_requirements_left_open: []
+ingress_addressed: []
+ingress_left_open: []
+rbac_addressed: []
+rbac_left_open: []
+warnings:
+- "Ceci n\xE9cessite l'installation de l'op\xE9rateur KEDA dans le cluster."
+- "Le champ 'scaleTargetRef.name' utilise un placeholder <component_name> car aucun\
+  \ nom de composant n'a \xE9t\xE9 fourni dans l'entr\xE9e."

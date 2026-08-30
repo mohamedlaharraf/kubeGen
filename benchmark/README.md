@@ -11,7 +11,7 @@ suite de 10 exigences en langage naturel.
 | A - Agent unique | `adapters/architecture_a_single_agent.py` | ✅ branché |
 | B - Pipeline multi-agents | `adapters/architecture_b_pipeline.py` | ✅ branché |
 | C - Orchestrateur + blackboard | `adapters/architecture_c_blackboard.py` | ✅ branché |
-| D - Orchestrateur + débat | — | ⏳ pas encore construit |
+| D - Orchestrateur + débat | `adapters/architecture_d_debate.py` | ✅ branché |
 
 ### Configurer l'architecture B
 
@@ -35,6 +35,12 @@ benchmark utilisera par défaut l'interpréteur Python du benchmark
 lui-même (probablement sans `langgraph`/`tenacity` installés, donc B
 échouera avec une erreur claire plutôt qu'un plantage silencieux).
 
+⚠️ **Cohérence du modèle** : à ce jour, `pipeline-kubegen` utilise
+toujours `GEMMA_MODEL=gemma-4-31b-it` (voir son `config.py`) alors que
+l'Architecture A a été basculée sur `gemini-2.5-flash`. Comparer A et B
+avec des modèles différents biaise le tableau de coût/latence -- si vous
+voulez une comparaison équitable, alignez aussi le modèle de
+pipeline-kubegen avant de lancer le benchmark complet.
 
 ## Lancer le benchmark
 
@@ -90,13 +96,45 @@ sudo mv kube-linter /usr/local/bin/
 
 Vérifiez avec `kube-linter version`.
 
-## Rubrique du score énergie
 
-Voir le docstring de `energy_score.py` pour le détail des 5 critères et
-leurs poids (requests/limits 40, autoscaling 25, node scheduling 20,
-PodDisruptionBudget 10, probes 5), et pour la logique de normalisation
-quand un critère n'est pas applicable à un scénario donné (ex : pas de
-pénalité HPA sur un CronJob).
+## Rubrique du score énergie (AHP)
+
+Les poids des 5 critères ne sont plus choisis à la main : ils sont
+**dérivés par AHP** (Analytic Hierarchy Process) à partir d'une matrice
+de comparaisons par paires documentée dans `benchmark/energy_score.py`,
+avec un ratio de cohérence vérifié (CR = 0.0153, seuil 0.10) — voir
+`benchmark/ahp.py` pour la méthode de calcul.
+
+| Critère | Poids (AHP) |
+|---|---|
+| Requests/limits (right-sizing) | 41.6 |
+| Autoscaling (HPA/KEDA) | 26.2 |
+| Node scheduling (affinity/topologie) | 16.1 |
+| Probes (liveness/readiness) | 9.9 |
+| PodDisruptionBudget | 6.2 |
+
+Voir le docstring de `energy_score.py` pour la justification de chaque
+comparaison (pourquoi le sizing domine, pourquoi le PDB est le critère
+le moins pertinent pour l'énergie...), et pour la logique de
+normalisation quand un critère n'est pas applicable à un scénario donné
+(ex : pas de pénalité HPA sur un CronJob).
+
+## Classement global des architectures (TOPSIS)
+
+En complément du score énergie par manifeste, `benchmark_report.md`
+inclut une section **Classement global (AHP + TOPSIS)** qui classe les
+architectures A/B/C/D sur 4 critères hétérogènes (validité, score
+énergie, coût, latence) — les poids de ces 4 critères viennent d'un
+second AHP (CR = 0.0243), et TOPSIS classe les architectures par
+distance à une solution idéale/anti-idéale (fictive, meilleure/pire
+valeur observée par critère), plutôt qu'une simple moyenne pondérée qui
+ne distinguerait pas une architecture équilibrée d'une architecture
+excellente sur un seul axe. Voir `benchmark/mcda_ranking.py` et
+`benchmark/topsis.py`.
+
+Une architecture sans coût/latence connu (ex: tokens non capturés) est
+**exclue** du classement plutôt que notée sur un 0 arbitraire — la
+raison exacte apparaît dans le rapport.
 
 ## Tarification (`pricing.py`)
 

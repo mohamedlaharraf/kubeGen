@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkout-api-sa
+  namespace: payments
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: payments
+  labels:
+    app: checkout-api
+    runtime: nodejs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        app: checkout-api
+        runtime: nodejs
+    spec:
+      serviceAccountName: checkout-api-sa
+      containers:
+        - name: checkout-api
+          image: myregistry/checkout:1.4.2
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: checkout-db-secret
+                  key: password
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-api
+  namespace: payments
+spec:
+  type: ClusterIP
+  selector:
+    app: checkout-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: checkout-api-netpol
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: checkout-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080

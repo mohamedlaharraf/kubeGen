@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-resizer-sa
+  namespace: media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-resizer
+  namespace: media
+  labels:
+    app: image-resizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-resizer
+  template:
+    metadata:
+      labels:
+        app: image-resizer
+    spec:
+      serviceAccountName: image-resizer-sa
+      containers:
+      - name: image-resizer
+        image: myregistry/resizer:3.2
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "512Mi"
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        env:
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: rabbitmq-config
+              key: host
+        - name: RABBITMQ_QUEUE
+          value: resize-queue
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: image-resizer-scaledobject
+  namespace: media
+spec:
+  scaleTargetRef:
+    name: image-resizer
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers:
+  - type: rabbitmq
+    metadata:
+      queueName: resize-queue
+      queueLength: "5"
+  - type: cpu
+    metadata:
+      type: Utilization
+      value: "60"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: media
+data:
+  host: rabbitmq-service
