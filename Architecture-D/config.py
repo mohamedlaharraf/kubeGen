@@ -14,7 +14,7 @@ class Settings:
     # à modèle égal (E6 - instrumentation homogène) : sans ça, Architecture
     # C serait comparée à B sur un modèle différent, ce qui biaiserait
     # latence/coût sans rapport avec le mérite architectural lui-même.
-    GEMMA_MODEL: str = os.getenv("LLM_MODEL", os.getenv("GEMMA_MODEL", "gemini-3.6-flash"))
+    GEMMA_MODEL: str = os.getenv("LLM_MODEL", os.getenv("GEMMA_MODEL", "gemma-4-31b-it"))
     AGENT1_MAX_REPAIR_ATTEMPTS: int = int(
         os.getenv("AGENT1_MAX_REPAIR_ATTEMPTS", "2")
     )
@@ -39,7 +39,7 @@ class Settings:
     # la littérature documente justement ce risque de non-convergence).
     DEBATE_MAX_TURNS: int = int(os.getenv("DEBATE_MAX_TURNS", "1"))
     LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.2"))
-    LLM_MAX_OUTPUT_TOKENS: int = int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "8192"))
+    LLM_MAX_OUTPUT_TOKENS: int = int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "24576"))
     OUTPUT_DIR: str = os.getenv("OUTPUT_DIR", "output")
 
     @classmethod

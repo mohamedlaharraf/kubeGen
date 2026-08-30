@@ -35,6 +35,134 @@ SYSTEM = (PROMPTS_DIR / "agent2_system.txt").read_text(encoding="utf-8")
 FIX_SYSTEM = (PROMPTS_DIR / "agent2_fix_system.txt").read_text(encoding="utf-8")
 
 
+# ============================================================
+# DÉTECTION DES INCOMPATIBILITÉS IMAGE ↔ SECURITYCONTEXT
+# ============================================================
+def _detect_image_incompatibilities(image: str, ports: list, volumes: list) -> dict:
+    """
+    Détecte si l'image est incompatible avec le hardening par défaut.
+    Retourne {'needs_root': bool, 'needs_writable_fs': bool, 'reason': str, 'recommendations': list}
+    """
+    result = {
+        "needs_root": False,
+        "needs_writable_fs": False,
+        "reason": "",
+        "recommendations": []
+    }
+    
+    image_lower = image.lower()
+    
+    # === DÉTECTION ROOT ===
+    # Images connues pour nécessiter root (serveurs web sur ports privilégiés, outils système)
+    root_images = ["nginx", "httpd", "apache", "tcpdump", "ping", "strace", "systemd", "traefik"]
+    for img in root_images:
+        if img in image_lower and "unprivileged" not in image_lower:
+            result["needs_root"] = True
+            result["reason"] += f"L'image {img} nécessite généralement root"
+            result["recommendations"].append(
+                f"Utiliser une version unprivileged si disponible (ex: nginxinc/nginx-unprivileged)"
+            )
+            break
+    
+    # Détection par port (si pas déjà détecté)
+    if not result["needs_root"]:
+        for p in ports:
+            if isinstance(p, dict) and p.get("container_port", 0) < 1024:
+                result["needs_root"] = True
+                port = p.get("container_port")
+                result["reason"] += f"Port privilégié ({port}) < 1024"
+                result["recommendations"].append(
+                    "Ajouter capability NET_BIND_SERVICE ou utiliser un port > 1024"
+                )
+                break
+            elif hasattr(p, "container_port") and p.container_port < 1024:
+                result["needs_root"] = True
+                port = p.container_port
+                result["reason"] += f"Port privilégié ({port}) < 1024"
+                result["recommendations"].append(
+                    "Ajouter capability NET_BIND_SERVICE ou utiliser un port > 1024"
+                )
+                break
+    
+    # Si l'utilisateur a explicitement demandé privileged: true
+    # (cas des outils de debug comme kernel-debugger)
+    if "privileged" in image_lower or "kdebug" in image_lower or "debug" in image_lower:
+        result["needs_root"] = True
+        if not result["reason"]:
+            result["reason"] = "Image identifiée comme outil nécessitant des privilèges"
+        result["recommendations"].append("Garder privileged: true, runAsUser: 0")
+    
+    # === DÉTECTION READ-ONLY ===
+    writable_images = ["postgres", "mysql", "mariadb", "redis", "mongo", "elasticsearch", 
+                       "nginx", "httpd", "apache", "node", "python", "php", "ruby",
+                       "tomcat", "jetty", "wildfly", "jenkins", "gitlab", "flask", "django"]
+    for img in writable_images:
+        if img in image_lower:
+            result["needs_writable_fs"] = True
+            if not result["reason"]:
+                result["reason"] = f"L'image {img} écrit généralement sur le système de fichiers"
+            else:
+                result["reason"] += f" ; l'image {img} écrit sur le système de fichiers"
+            result["recommendations"].append(
+                "Ajouter un emptyDir sur /tmp ou /var/cache (ou désactiver readOnlyRootFilesystem)"
+            )
+            break
+    
+    # Détection par volumes
+    if not result["needs_writable_fs"] and volumes:
+        for vol in volumes:
+            if isinstance(vol, dict) and vol.get("mount_path"):
+                result["needs_writable_fs"] = True
+                if not result["reason"]:
+                    result["reason"] = "La spec demande des volumes montés (écriture nécessaire)"
+                else:
+                    result["reason"] += " ; des volumes montés sont demandés"
+                break
+            elif hasattr(vol, "mount_path") and vol.mount_path:
+                result["needs_writable_fs"] = True
+                if not result["reason"]:
+                    result["reason"] = "La spec demande des volumes montés (écriture nécessaire)"
+                else:
+                    result["reason"] += " ; des volumes montés sont demandés"
+                break
+    
+    return result
+
+
+def _build_hardening_override(image: str, incompatibilities: dict) -> str:
+    """Construit le message d'adaptation du hardening pour le prompt."""
+    hardening_override = ""
+    
+    if incompatibilities["needs_root"]:
+        hardening_override += f"""
+⚠️ DÉROGATION ROOT DÉTECTÉE :
+L'image {image} est incompatible avec runAsNonRoot: true.
+Raison : {incompatibilities['reason']}
+Recommandations : {', '.join(incompatibilities['recommendations'])}
+
+INSTRUCTIONS POUR LE SECURITYCONTEXT :
+- runAsNonRoot: false
+- runAsUser: 0 (uniquement si l'image l'exige)
+- capabilities.add: ["NET_BIND_SERVICE"] (si port < 1024)
+- Documente cette dérogation dans warnings
+"""
+    
+    if incompatibilities["needs_writable_fs"]:
+        hardening_override += f"""
+⚠️ DÉROGATION READ-ONLY DÉTECTÉE :
+L'image {image} est incompatible avec readOnlyRootFilesystem: true.
+Raison : {incompatibilities['reason']}
+Recommandations : {', '.join(incompatibilities['recommendations'])}
+
+INSTRUCTIONS POUR LE SECURITYCONTEXT :
+- readOnlyRootFilesystem: false
+- Si nécessaire, ajoute un volume emptyDir sur /tmp ou /var/cache
+- Documente cette dérogation dans warnings
+"""
+    
+    return hardening_override
+
+
 def run_generator_fix(state: PipelineState) -> PipelineState:
     """
     Noeud dédié à la boucle Generator <-> Validator (Architecture C,
@@ -186,6 +314,29 @@ def _generate_component(namespace: str, component, global_constraints: list,
         }
     )
     relevant["namespace"] = namespace  # partagé au niveau de la spec, pas du composant
+    
+    # ============================================================
+    # DÉTECTION DES INCOMPATIBILITÉS
+    # ============================================================
+    incompatibilities = _detect_image_incompatibilities(
+        component.image,
+        component.ports,
+        component.volumes
+    )
+    
+    # ============================================================
+    # ADAPTATION DU HARDENING
+    # ============================================================
+    hardening_override = _build_hardening_override(component.image, incompatibilities)
+    if hardening_override:
+        relevant["hardening_override"] = hardening_override
+        relevant["_incompatibilities"] = {
+            "needs_root": incompatibilities["needs_root"],
+            "needs_writable_fs": incompatibilities["needs_writable_fs"],
+            "reason": incompatibilities["reason"],
+            "recommendations": incompatibilities["recommendations"]
+        }
+    
     if injection_map:
         # Décision DÉJÀ PRISE en Python déterministe (voir
         # utils/sidecar_injection.py) : l'Agent 2 ne doit plus décider
