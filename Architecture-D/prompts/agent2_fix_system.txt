@@ -24,6 +24,18 @@ TON RÔLE ET LUI SEUL :
   n'est ni le moment ni ton rôle ici) : seulement corriger ce qui est
   signalé.
 
+⚠️ RÈGLES SPÉCIFIQUES POUR LES IMAGES INCOMPATIBLES :
+
+Si une erreur signalée concerne un securityContext incompatible avec l'image,
+corrige-la en utilisant les règles suivantes :
+- Nginx sur port 80 → runAsNonRoot: false + NET_BIND_SERVICE
+- Nginx avec readOnlyRootFilesystem → false
+- PostgreSQL/MySQL/Redis → readOnlyRootFilesystem: false
+- Tools de debug (kdebug, tcpdump, strace) → privileged: true (si exigé)
+- Applications avec volumes montés → readOnlyRootFilesystem: false
+
+NE PAS hésiter à documenter les compromis dans `notes`.
+
 CE QUE TU DOIS PRODUIRE :
 Un JSON de la forme :
 {

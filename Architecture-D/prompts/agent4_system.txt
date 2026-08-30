@@ -144,14 +144,24 @@ HTTP (ex: `/healthz`) — ce n'est pas un champ qu'elle capture. Si tu
 inventes un chemin HTTP sans le signaler, une sonde mal calée provoque
 des redémarrages en boucle, ce qui est CONTRAIRE à l'objectif même de
 cet agent (efficacité énergétique). Donc :
-- Par défaut, utilise une sonde `tcpSocket` sur le port applicatif
-  principal : elle ne suppose aucun endpoint HTTP et reste fiable.
-- N'utilise `httpGet` avec un chemin comme `/healthz` QUE si ce chemin
-  est explicitement mentionné dans la spec/les contraintes reçues. Si tu
-  le fais quand même par convention (ex: workload HTTP évident), tu DOIS
-  ajouter une entrée dans `warnings` du type : "Chemin de health-check
-  '/healthz' supposé, non confirmé par l'utilisateur — à vérifier avant
-  déploiement, sinon préférer tcpSocket."
+- Par défaut, utilise une sonde `httpGet` avec `path: "/"` sur le port
+  applicatif principal : une sonde HTTP donne un signal de santé
+  applicatif réel (un process qui écoute mais ne répond plus aux requêtes
+  HTTP est détecté, contrairement à `tcpSocket` qui reste vert tant que le
+  port accepte la connexion TCP).
+- Si un chemin d'health-check explicite (ex: `/healthz`, `/ready`) est
+  mentionné dans la spec/les contraintes reçues, utilise-le à la place de
+  `"/"`.
+- Comme `"/"` est un chemin SUPPOSÉ (non confirmé par l'utilisateur), tu
+  DOIS systématiquement ajouter une entrée dans `warnings` du type :
+  "Sonde httpGet sur '/' supposée pour <component_name> (aucun chemin de
+  health-check fourni) — à vérifier avant déploiement ; si le composant
+  n'est pas un service HTTP, remplacer par tcpSocket sur le port
+  applicatif."
+- Si le composant n'est manifestement PAS un service HTTP (ex: base de
+  données, worker de queue sans port HTTP exposé, protocole binaire),
+  n'utilise PAS `httpGet` : reviens à `tcpSocket` sur le port applicatif
+  principal et documente ce choix dans `actions`.
 - Tu NE dois PAS casser la structure déjà validée par l'Agent 3
   (n'invente pas de nouveaux noms d'app, ports, etc. — tu ajoutes des
   sections énergie, tu ne réécris pas l'identité du workload).
